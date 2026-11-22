@@ -7,6 +7,6 @@ path = /usr/bin/extra
 group = utils
 license = MIT
 packager = Luna Build Team
-url = https://github.com/luna-os/packages
+url = https://github.com/TheEartHTM/luna
 builddate = Sat Nov 21 21:00:00 2026
 backup = /etc/conf/display.conf

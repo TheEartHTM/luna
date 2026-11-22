@@ -290,7 +290,7 @@ local function getInitialDB()
             repo = "core",
             description = "Luna OS Core System Services, Daemons and Disk Management",
             architecture = "any",
-            url = "https://github.com/luna-os/packages",
+            url = "https://github.com/TheEartHTM/luna",
             licenses = "MIT",
             groups = "base",
             provides = "None",
@@ -309,7 +309,7 @@ local function getInitialDB()
             repo = "extra",
             description = "Luna OS Extra Userland Utilities and Shell Tools",
             architecture = "any",
-            url = "https://github.com/luna-os/packages",
+            url = "https://github.com/TheEartHTM/luna",
             licenses = "GPL-3.0",
             groups = "base-devel",
             provides = "None",
@@ -990,7 +990,7 @@ if op == "Q" then
 -- OPERATION: -S (Sync / Remote)
 --------------------------------------------------------------------------------
 elseif op == "S" then
-    local repoUrl = conf.repo_url or "https://raw.githubusercontent.com/luna-os/packages/main"
+    local repoUrl = conf.repo_url or "https://raw.githubusercontent.com/TheEartHTM/luna/main/repo"
     local host = repoUrl:match("https?://([^/]+)") or "repo"
     local syncDB = loadSyncDB()
 
@@ -1251,7 +1251,7 @@ elseif op == "S" then
                 print(string.format("%-16s: %s", "Version", pkg.version or "1.0.0-1"))
                 print(string.format("%-16s: %s", "Description", pkg.description or "None"))
                 print(string.format("%-16s: %s", "Architecture", pkg.architecture or "any"))
-                print(string.format("%-16s: %s", "URL", pkg.url or "https://github.com/luna-os/packages"))
+                print(string.format("%-16s: %s", "URL", pkg.url or "https://github.com/TheEartHTM/luna"))
                 print(string.format("%-16s: %s", "Licenses", pkg.licenses or "MIT"))
                 print(string.format("%-16s: %s", "Groups", pkg.groups or "base"))
                 print(string.format("%-16s: %s", "Provides", pkg.provides or "None"))

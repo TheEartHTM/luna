@@ -41,7 +41,7 @@
     ["provides"] = "None",
     ["repo"] = "core",
     ["size"] = 74130,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "9.5-3",
   },
   ["dust"] = {
@@ -70,7 +70,7 @@
     ["provides"] = "None",
     ["repo"] = "core",
     ["size"] = 63941,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "1.2.0-6",
   },
   ["iproute2"] = {
@@ -102,7 +102,7 @@
     ["provides"] = "None",
     ["repo"] = "core",
     ["size"] = 24130,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "6.10.0-7",
   },
   ["shadow"] = {
@@ -137,7 +137,7 @@
     ["provides"] = "None",
     ["repo"] = "core",
     ["size"] = 14388,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "4.16.0-2",
   },
   ["sudo"] = {
@@ -165,7 +165,7 @@
     ["provides"] = "None",
     ["repo"] = "core",
     ["size"] = 1967,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "1.9.15-1",
   },
   ["systemd"] = {
@@ -203,7 +203,7 @@
     ["provides"] = "None",
     ["repo"] = "core",
     ["size"] = 122014,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "256.4-11",
   },
   ["util-linux"] = {
@@ -234,7 +234,7 @@
     ["provides"] = "None",
     ["repo"] = "core",
     ["size"] = 15170,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "2.40.2-4",
   },
 }

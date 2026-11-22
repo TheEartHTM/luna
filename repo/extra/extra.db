@@ -59,7 +59,7 @@
       ["script"] = "/usr/bin/extra/dhcpd.lua",
     },
     ["size"] = 36380,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "2.1.0-8",
   },
   ["display-tools"] = {
@@ -89,7 +89,7 @@
     ["provides"] = "None",
     ["repo"] = "extra",
     ["size"] = 11182,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "1.0.0-2",
   },
   ["fastfetch"] = {
@@ -145,7 +145,7 @@
     ["provides"] = "None",
     ["repo"] = "extra",
     ["size"] = 6179,
-    ["url"] = "https://github.com/luna-os/packages",
+    ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "1.0.0-2",
   },
   ["micro"] = {
