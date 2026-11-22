@@ -33,8 +33,30 @@ function sandbox.resolveChroot(root, path)
 end
 
 -- -----------------------------------------------------------------------------
--- Chroot & Read-Only Virtual Filesystem Wrapper
+-- Chroot, Read-Only & Isolated Empty VFS Wrappers
 -- -----------------------------------------------------------------------------
+function sandbox.createEmptyFs()
+    local eFs = {}
+    local realFs = fs or {}
+    eFs.combine = realFs.combine or function(a, b) return (a or "") .. "/" .. (b or "") end
+    eFs.getName = realFs.getName or function(p) return tostring(p or ""):match("[^/\\]+$") or p end
+    eFs.getDir = realFs.getDir or function(p) return tostring(p or ""):match("^(.-)[/\\][^/\\]+$") or "" end
+    eFs.exists = function() return false end
+    eFs.isDir = function() return false end
+    eFs.isReadOnly = function() return true end
+    eFs.list = function() return {} end
+    eFs.getSize = function() return 0 end
+    eFs.getFreeSpace = function() return 0 end
+    eFs.attributes = function() return nil end
+    eFs.open = function() return nil, "Permission denied (no filesystem in sandbox)" end
+    eFs.makeDir = function() return false, "Permission denied (no filesystem in sandbox)" end
+    eFs.delete = function() return false, "Permission denied (no filesystem in sandbox)" end
+    eFs.copy = function() return false, "Permission denied (no filesystem in sandbox)" end
+    eFs.move = function() return false, "Permission denied (no filesystem in sandbox)" end
+    eFs.find = function() return {} end
+    return eFs
+end
+
 function sandbox.createChrootFs(baseFs, rootDir, readOnly)
     baseFs = baseFs or fs
     local cFs = {}
@@ -254,12 +276,16 @@ function sandbox.create(opts)
     env.os = sandbox.createSanitizedOs(os, allowShutdown)
 
     -- 7. Filesystem (VFS)
-    if isStrict or opts.no_fs then
-        env.fs = nil
-        env.io = nil
+    if opts.no_fs then
+        env.fs = sandbox.createEmptyFs()
+        if io then
+            env.io = {}
+            for k, v in pairs(io) do env.io[k] = v end
+            env.io.open = function() return nil, "Permission denied (no filesystem in sandbox)" end
+        end
     elseif opts.root then
-        env.fs = sandbox.createChrootFs(fs, opts.root, opts.read_only)
-    elseif opts.read_only then
+        env.fs = sandbox.createChrootFs(fs, opts.root, opts.read_only or isStrict)
+    elseif opts.read_only or isStrict then
         env.fs = sandbox.createReadOnlyFs(fs)
     else
         env.fs = fs
@@ -285,10 +311,14 @@ function sandbox.create(opts)
         end
     end
 
-    -- 9. Shell Environment
-    if not isStrict and not opts.no_shell and shell then
+    -- 9. Shell Environment (always provided so child commands/scripts run in sandbox)
+    if not opts.no_shell then
         local sShell = {}
-        for k, v in pairs(shell) do sShell[k] = v end
+        if shell then
+            for k, v in pairs(shell) do sShell[k] = v end
+        end
+        sShell.dir = (shell and shell.dir) or function() return "" end
+        sShell.resolve = (shell and shell.resolve) or function(p) return p end
         -- Wrap shell.run and shell.execute to run in child sandbox
         sShell.run = function(prog, ...)
             local ok, code = sandbox.run(prog, { ... }, opts)
@@ -382,6 +412,72 @@ function sandbox.run(target, args, opts)
         return false, 1
     end
 
+    -- Detect Shell Scripts (.sh or #! shebang)
+    local isShellScript = (resolved:sub(-3) == ".sh") or (code:sub(1, 2) == "#!")
+
+    if isShellScript then
+        local shPath = "/usr/bin/core/sh.lua"
+        if not fs.exists(shPath) then shPath = "/usr/bin/core/sh" end
+        if not fs.exists(shPath) and fs.exists("/usr/bin/core/bash.lua") then
+            shPath = "/usr/bin/core/bash.lua"
+        end
+
+        local shCode = nil
+        if fs and fs.open then
+            local shH = fs.open(shPath, "r")
+            if shH then
+                shCode = shH.readAll()
+                shH.close()
+            end
+        end
+
+        if not shCode then
+            printError("sandbox: shell interpreter not found at /usr/bin/core/sh")
+            return false, 127
+        end
+
+        local shFn, shErr
+        if load then
+            shFn, shErr = load(shCode, "@" .. shPath, "t", env)
+            if not shFn and setfenv then
+                shFn, shErr = load(shCode, "@" .. shPath)
+                if shFn then pcall(setfenv, shFn, env) end
+            end
+        elseif loadstring then
+            shFn, shErr = loadstring(shCode, "@" .. shPath)
+            if shFn and setfenv then pcall(setfenv, shFn, env) end
+        end
+
+        if not shFn then
+            printError("sandbox: failed to load shell: " .. tostring(shErr))
+            return false, 1
+        end
+
+        if setfenv then pcall(setfenv, shFn, env) end
+
+        -- Run shell interpreter with -c so script executes directly inside sandbox
+        local shArgs = { "-c", code, table.unpack(args) }
+        local ok, res = pcall(shFn, table.unpack(shArgs))
+        if not ok then
+            if tostring(res):find("Terminated") then
+                print("^C")
+                return false, 130
+            else
+                printError("sandbox: " .. tostring(res))
+                return false, 1
+            end
+        end
+
+        local exitCode = 0
+        if type(res) == "number" then
+            exitCode = res
+        elseif res == false then
+            exitCode = 1
+        end
+
+        return true, exitCode
+    end
+
     local fn, err
     if load then
         fn, err = load(code, "@" .. resolved, "t", env)
@@ -457,7 +553,7 @@ if #rawArgs > 0 and rawArgs[1] ~= "--module" then
         print("Run programs in an isolated, sandboxed environment.")
         print("")
         print("Options:")
-        print("  -s, --strict       Pure compute sandbox (no fs, no net, no os.shutdown)")
+        print("  -s, --strict       Strict sandbox (read-only fs, no net, no os.shutdown)")
         print("  -r, --root <DIR>   Chroot / jail filesystem to specified directory")
         print("  -R, --read-only    Mount filesystem in read-only mode")
         print("      --no-net       Disable network interfaces (http, rednet, modems)")

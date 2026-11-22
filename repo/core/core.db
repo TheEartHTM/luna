@@ -46,7 +46,7 @@
     ["path"] = "/usr/bin/core",
     ["provides"] = "None",
     ["repo"] = "core",
-    ["size"] = 114277,
+    ["size"] = 118048,
     ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "9.5-6",
   },
