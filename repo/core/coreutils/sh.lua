@@ -473,43 +473,18 @@ local function createInterpreter(customEnv, parentFunctions)
                             exitCode = 127
                         end
                     else
-                        local curUser = (self.env and self.env.USER) or _G.CURRENT_USER or "root"
-                        local name = fs.getName(full):gsub("%.lua$", "")
-                        local isDirect = (name == "cd" or name == "exit" or name == "sudo" or name == "su" or name == "passwd" or name == "chvt" or name == "focus")
-
-                        if curUser ~= "root" and not isDirect then
-                            local sEngine = _G.sandbox
-                            if not sEngine and fs.exists("/usr/bin/core/sandbox.lua") then
-                                local sFn = loadfile("/usr/bin/core/sandbox.lua")
-                                if sFn then
-                                    local sOk, sMod = pcall(sFn, "--module")
-                                    if sOk and type(sMod) == "table" then
-                                        sEngine = sMod
-                                        _G.sandbox = sMod
-                                    end
-                                end
-                            end
-                            if sEngine and sEngine.run then
-                                local sOk, sCode = sEngine.run(full, args, { profile = "user", user = curUser, shell = shell })
-                                exitCode = sCode or (sOk and 0 or 1)
-                            else
-                                local ok = shell and shell.run and shell.run(full, table.unpack(args))
-                                exitCode = ok and 0 or 1
-                            end
+                        if shell and shell.run then
+                            local ok = shell.run(full, table.unpack(args))
+                            exitCode = ok and 0 or 1
                         else
-                            if shell and shell.run then
-                                local ok = shell.run(full, table.unpack(args))
+                            local fn, err = loadfile(full)
+                            if fn then
+                                local ok, res = pcall(fn, table.unpack(args))
                                 exitCode = ok and 0 or 1
                             else
-                                local fn, err = loadfile(full)
-                                if fn then
-                                    local ok, res = pcall(fn, table.unpack(args))
-                                    exitCode = ok and 0 or 1
-                                else
-                                    if oldTerm then pcall(term.redirect, oldTerm) end
-                                    printError("sh: syntax error in " .. full .. ": " .. tostring(err))
-                                    exitCode = 127
-                                end
+                                if oldTerm then pcall(term.redirect, oldTerm) end
+                                printError("sh: syntax error in " .. full .. ": " .. tostring(err))
+                                exitCode = 127
                             end
                         end
                     end
