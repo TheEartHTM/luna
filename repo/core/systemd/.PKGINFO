@@ -1,0 +1,12 @@
+# Generated for Luna OS
+pkgname = systemd
+pkgver = 256.4-12
+pkgdesc = System and Service Manager, init scripts, and power management
+repo = core
+path = /usr/bin/core
+group = base
+license = LGPL-2.1-or-later
+packager = Luna Build Team
+url = https://github.com/TheEartHTM/luna
+builddate = Sat Nov 21 21:00:00 2026
+backup = /etc/conf/services.db, /etc/conf/system.lua, /etc/conf/system.conf

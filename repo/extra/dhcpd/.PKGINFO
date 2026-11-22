@@ -1,0 +1,17 @@
+# Generated for Luna OS
+pkgname = dhcpd
+pkgver = 2.1.0-8
+pkgdesc = Luna DHCP and DNS server daemon with mesh cluster sync
+repo = extra
+path = /usr/bin/extra
+group = networking
+license = GPL-3.0-or-later
+packager = Luna Build Team
+url = https://github.com/luna-os/packages
+builddate = Sat Nov 21 21:00:00 2026
+depends = iproute2
+backup = /etc/conf/dhcpd.conf
+service_name = dhcpd
+service_script = /usr/bin/extra/dhcpd.lua
+service_order = 10
+service_desc = Luna DHCP & DNS Server Daemon (Cluster/CEE)

@@ -1,0 +1,11 @@
+# Generated for Luna OS
+pkgname = micro
+pkgver = 2.0.14-1
+pkgdesc = Modern and intuitive terminal-based text editor
+repo = extra
+path = /usr/bin/extra
+group = editors
+license = MIT
+packager = Luna Build Team
+url = https://micro-editor.github.io/
+builddate = Sat Nov 21 21:00:00 2026

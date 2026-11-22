@@ -1,0 +1,12 @@
+# Generated for Luna OS
+pkgname = iproute2
+pkgver = 6.10.0-7
+pkgdesc = IP routing and network stack, CEE fabric bus, DHCP and DNS tools
+repo = core
+path = /usr/bin/core
+group = base
+license = GPL-2.0-only
+packager = Luna Build Team
+url = https://github.com/luna-os/packages
+builddate = Sat Nov 21 21:00:00 2026
+backup = /etc/conf/network.conf

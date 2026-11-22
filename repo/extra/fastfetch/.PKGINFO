@@ -1,0 +1,11 @@
+# Generated for Luna OS
+pkgname = fastfetch
+pkgver = 1.0.4-1
+pkgdesc = Fast and customizable system information tool for Luna OS
+repo = extra
+path = /usr/bin/extra
+group = utils
+license = MIT
+packager = Luna Build Team
+url = https://github.com/fastfetch-cli/fastfetch
+builddate = Sat Nov 21 21:00:00 2026

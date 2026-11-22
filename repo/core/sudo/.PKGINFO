@@ -1,0 +1,13 @@
+# Generated for Luna OS
+pkgname = sudo
+pkgver = 1.9.15-1
+pkgdesc = Give certain users the ability to run commands as root
+repo = core
+path = /usr/bin/core
+group = base
+license = ISC
+packager = Luna Build Team
+url = https://github.com/luna-os/packages
+builddate = Sat Nov 21 21:00:00 2026
+depends = shadow
+backup = /etc/sudoers

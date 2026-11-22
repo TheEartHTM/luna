@@ -1,0 +1,12 @@
+# Generated for Luna OS
+pkgname = curl
+pkgver = 8.9.1-1
+pkgdesc = Command line tool for transferring data with URLs
+repo = extra
+path = /usr/bin/extra
+group = utils
+license = curl
+packager = Luna Build Team
+url = https://curl.se/
+builddate = Sat Nov 21 21:00:00 2026
+depends = iproute2

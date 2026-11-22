@@ -1,0 +1,17 @@
+# Generated for Luna OS
+pkgname = openssh
+pkgver = 9.8-5
+pkgdesc = OpenSSH remote login server daemon and client for Luna OS (CEE)
+repo = extra
+path = /usr/bin/extra
+group = networking
+license = BSD-2-Clause
+packager = Luna Build Team
+url = https://www.openssh.com/
+builddate = Sat Nov 21 21:00:00 2026
+depends = iproute2, shadow
+backup = /etc/conf/sshd.conf
+service_name = sshd
+service_script = /usr/bin/extra/sshd.lua
+service_order = 20
+service_desc = OpenSSH server daemon (CEE)

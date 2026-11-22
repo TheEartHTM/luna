@@ -1,0 +1,12 @@
+# Generated for Luna OS
+pkgname = dust
+pkgver = 1.2.0-7
+pkgdesc = Luna OS package manager (POSIX-compliant package manager)
+repo = core
+path = /usr/bin/core
+group = base
+license = GPL-3.0-or-later
+packager = Luna Build Team
+url = https://github.com/TheEartHTM/luna
+builddate = Sat Nov 21 21:00:00 2026
+backup = /etc/conf/dust.conf, /etc/conf/dust.db

@@ -1,0 +1,240 @@
+{
+  ["coreutils"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "Core GNU/POSIX file, shell, and text manipulation utilities",
+    ["files"] = {
+      "/usr/bin/core/cat.lua",
+      "/usr/bin/core/cd.lua",
+      "/usr/bin/core/chmod.lua",
+      "/usr/bin/core/chown.lua",
+      "/usr/bin/core/clear.lua",
+      "/usr/bin/core/cp.lua",
+      "/usr/bin/core/df.lua",
+      "/usr/bin/core/ls.lua",
+      "/usr/bin/core/mkdir.lua",
+      "/usr/bin/core/mv.lua",
+      "/usr/bin/core/pwd.lua",
+      "/usr/bin/core/rm.lua",
+      "/usr/bin/core/touch.lua",
+      "/usr/bin/core/whoami.lua",
+      "/usr/bin/core/chvt.lua",
+      "/usr/bin/core/tty.lua",
+      "/usr/bin/core/sh.lua",
+      "/usr/bin/core/bash.lua",
+    },
+    ["groups"] = "base",
+    ["licenses"] = "GPL-3.0-or-later",
+    ["name"] = "coreutils",
+    ["package_dir"] = "coreutils",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/core",
+    ["provides"] = "None",
+    ["repo"] = "core",
+    ["size"] = 74130,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "9.5-3",
+  },
+  ["dust"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/conf/dust.conf",
+      "/etc/conf/dust.db",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "Luna OS package manager (Luna OS package manager)",
+    ["files"] = {
+      "/usr/bin/core/dust.lua",
+    },
+    ["groups"] = "base",
+    ["licenses"] = "GPL-3.0-or-later",
+    ["name"] = "dust",
+    ["package_dir"] = "dust",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/core",
+    ["provides"] = "None",
+    ["repo"] = "core",
+    ["size"] = 63941,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "1.2.0-6",
+  },
+  ["iproute2"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/conf/network.conf",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "IP routing and network stack, CEE fabric bus, DHCP and DNS tools",
+    ["files"] = {
+      "/usr/bin/core/dhcpcd.lua",
+      "/usr/bin/core/ifconfig.lua",
+      "/usr/bin/core/net.lua",
+      "/usr/bin/core/nslookup.lua",
+      "/usr/bin/core/ping.lua",
+    },
+    ["groups"] = "base",
+    ["licenses"] = "GPL-2.0-only",
+    ["name"] = "iproute2",
+    ["package_dir"] = "iproute2",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/core",
+    ["provides"] = "None",
+    ["repo"] = "core",
+    ["size"] = 24130,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "6.10.0-7",
+  },
+  ["shadow"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/passwd",
+      "/etc/shadow",
+      "/etc/group",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "User, group, and password administration utilities",
+    ["files"] = {
+      "/usr/bin/core/adduser.lua",
+      "/usr/bin/core/deluser.lua",
+      "/usr/bin/core/passwd.lua",
+      "/usr/bin/core/su.lua",
+      "/usr/bin/core/useradd.lua",
+      "/usr/bin/core/userdel.lua",
+    },
+    ["groups"] = "base",
+    ["licenses"] = "BSD-3-Clause",
+    ["name"] = "shadow",
+    ["package_dir"] = "shadow",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/core",
+    ["provides"] = "None",
+    ["repo"] = "core",
+    ["size"] = 14388,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "4.16.0-2",
+  },
+  ["sudo"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/sudoers",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+      "shadow",
+    },
+    ["description"] = "Give certain users the ability to run commands as root",
+    ["files"] = {
+      "/usr/bin/core/sudo.lua",
+    },
+    ["groups"] = "base",
+    ["licenses"] = "ISC",
+    ["name"] = "sudo",
+    ["package_dir"] = "sudo",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/core",
+    ["provides"] = "None",
+    ["repo"] = "core",
+    ["size"] = 1967,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "1.9.15-1",
+  },
+  ["systemd"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/conf/services.db",
+      "/etc/conf/system.conf",
+      "/etc/conf/system.lua",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "System and Service Manager, init scripts, and power management",
+    ["files"] = {
+      "/startup.lua",
+      "/usr/bin/core/poweroff.lua",
+      "/usr/bin/core/reboot.lua",
+      "/usr/bin/core/systemctl.lua",
+      "/usr/bin/core/udevadm.lua",
+      "/usr/lib/udev.lua",
+      "/usr/bin/core/systemd.lua",
+      "/usr/bin/core/ttymgr.lua",
+      "/usr/lib/tty.lua",
+    },
+    ["groups"] = "base",
+    ["licenses"] = "LGPL-2.1-or-later",
+    ["name"] = "systemd",
+    ["package_dir"] = "systemd",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/core",
+    ["provides"] = "None",
+    ["repo"] = "core",
+    ["size"] = 122014,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "256.4-11",
+  },
+  ["util-linux"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "Miscellaneous system utilities, disk formatting, device and process tools",
+    ["files"] = {
+      "/usr/bin/core/format.lua",
+      "/usr/bin/core/kill.lua",
+      "/usr/bin/core/lsdev.lua",
+      "/usr/bin/core/ps.lua",
+    },
+    ["groups"] = "base",
+    ["licenses"] = "GPL-2.0-or-later",
+    ["name"] = "util-linux",
+    ["package_dir"] = "util-linux",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/core",
+    ["provides"] = "None",
+    ["repo"] = "core",
+    ["size"] = 15170,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "2.40.2-4",
+  },
+}

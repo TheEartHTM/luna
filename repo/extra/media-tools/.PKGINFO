@@ -1,0 +1,11 @@
+# Generated for Luna OS
+pkgname = media-tools
+pkgver = 1.0.0-1
+pkgdesc = Audio playback and synthesizer tools for CEE Speakers
+repo = extra
+path = /usr/bin/extra
+group = multimedia
+license = MIT
+packager = Luna Build Team
+url = https://github.com/luna-os/packages
+builddate = Sat Nov 21 21:00:00 2026

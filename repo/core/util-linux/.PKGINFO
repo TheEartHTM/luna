@@ -1,0 +1,11 @@
+# Generated for Luna OS
+pkgname = util-linux
+pkgver = 2.40.2-4
+pkgdesc = Miscellaneous system utilities, disk formatting, device and process tools
+repo = core
+path = /usr/bin/core
+group = base
+license = GPL-2.0-or-later
+packager = Luna Build Team
+url = https://github.com/luna-os/packages
+builddate = Sat Nov 21 21:00:00 2026

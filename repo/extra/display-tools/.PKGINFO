@@ -1,0 +1,12 @@
+# Generated for Luna OS
+pkgname = display-tools
+pkgver = 1.0.0-2
+pkgdesc = Multi-monitor and TTY workspace management utilities
+repo = extra
+path = /usr/bin/extra
+group = utils
+license = MIT
+packager = Luna Build Team
+url = https://github.com/luna-os/packages
+builddate = Sat Nov 21 21:00:00 2026
+backup = /etc/conf/display.conf

@@ -1,0 +1,215 @@
+{
+  ["curl"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+      "iproute2",
+    },
+    ["description"] = "Command line tool for transferring data with URLs",
+    ["files"] = {
+      "/usr/bin/extra/curl.lua",
+    },
+    ["groups"] = "utils",
+    ["licenses"] = "curl",
+    ["name"] = "curl",
+    ["package_dir"] = "curl",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["size"] = 10999,
+    ["url"] = "https://curl.se/",
+    ["version"] = "8.9.1-1",
+  },
+  ["dhcpd"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/conf/dhcpd.conf",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+      "iproute2",
+    },
+    ["description"] = "Luna DHCP and DNS server daemon with mesh cluster sync",
+    ["files"] = {
+      "/usr/bin/extra/dhcpd.lua",
+      "/usr/bin/extra/dhcpctl.lua",
+    },
+    ["groups"] = "networking",
+    ["licenses"] = "GPL-3.0-or-later",
+    ["name"] = "dhcpd",
+    ["package_dir"] = "dhcpd",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["service"] = {
+      ["desc"] = "Luna DHCP & DNS Server Daemon (Cluster/CEE)",
+      ["name"] = "dhcpd",
+      ["order"] = 10,
+      ["script"] = "/usr/bin/extra/dhcpd.lua",
+    },
+    ["size"] = 36380,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "2.1.0-8",
+  },
+  ["display-tools"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/conf/system.lua",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "Multi-monitor and TTY workspace management utilities",
+    ["files"] = {
+      "/usr/bin/extra/display.lua",
+      "/usr/bin/extra/scale.lua",
+      "/usr/bin/extra/ttymgr.lua",
+    },
+    ["groups"] = "utils",
+    ["licenses"] = "MIT",
+    ["name"] = "display-tools",
+    ["package_dir"] = "display-tools",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["size"] = 11182,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "1.0.0-2",
+  },
+  ["fastfetch"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "Fast and customizable system information tool for Luna OS",
+    ["files"] = {
+      "/usr/bin/extra/fastfetch.lua",
+    },
+    ["groups"] = "utils",
+    ["licenses"] = "MIT",
+    ["name"] = "fastfetch",
+    ["package_dir"] = "fastfetch",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["size"] = 7782,
+    ["url"] = "https://github.com/fastfetch-cli/fastfetch",
+    ["version"] = "1.0.4-1",
+  },
+  ["media-tools"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "Audio playback and synthesizer tools for CEE Speakers",
+    ["files"] = {
+      "/usr/bin/extra/play.lua",
+    },
+    ["groups"] = "multimedia",
+    ["licenses"] = "MIT",
+    ["name"] = "media-tools",
+    ["package_dir"] = "media-tools",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["size"] = 6179,
+    ["url"] = "https://github.com/luna-os/packages",
+    ["version"] = "1.0.0-2",
+  },
+  ["micro"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+
+    },
+    ["description"] = "Modern and intuitive terminal-based text editor",
+    ["files"] = {
+      "/usr/bin/extra/micro.lua",
+    },
+    ["groups"] = "editors",
+    ["licenses"] = "MIT",
+    ["name"] = "micro",
+    ["package_dir"] = "micro",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["size"] = 27509,
+    ["url"] = "https://micro-editor.github.io/",
+    ["version"] = "2.0.14-1",
+  },
+  ["openssh"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/conf/sshd.conf",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+
+    },
+    ["deps"] = {
+      "iproute2",
+      "shadow",
+    },
+    ["description"] = "OpenSSH remote login server daemon and client for Luna OS (CEE)",
+    ["files"] = {
+      "/usr/bin/extra/ssh.lua",
+      "/usr/bin/extra/sshd.lua",
+    },
+    ["groups"] = "networking",
+    ["licenses"] = "BSD-2-Clause",
+    ["name"] = "openssh",
+    ["package_dir"] = "openssh",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["service"] = {
+      ["desc"] = "OpenSSH server daemon (CEE)",
+      ["name"] = "sshd",
+      ["order"] = 20,
+      ["script"] = "/usr/bin/extra/sshd.lua",
+    },
+    ["size"] = 18005,
+    ["url"] = "https://www.openssh.com/",
+    ["version"] = "9.8-5",
+  },
+}

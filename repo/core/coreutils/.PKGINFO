@@ -1,0 +1,11 @@
+# Generated for Luna OS
+pkgname = coreutils
+pkgver = 9.5-4
+pkgdesc = Core GNU/POSIX file, shell, and text manipulation utilities
+repo = core
+path = /usr/bin/core
+group = base
+license = GPL-3.0-or-later
+packager = Luna Build Team
+url = https://github.com/TheEartHTM/luna
+builddate = Sat Nov 21 21:00:00 2026
