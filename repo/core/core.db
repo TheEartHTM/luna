@@ -48,7 +48,7 @@
     ["repo"] = "core",
     ["size"] = 118048,
     ["url"] = "https://github.com/TheEartHTM/luna",
-    ["version"] = "9.5-6",
+    ["version"] = "9.5-7",
   },
   ["dust"] = {
     ["architecture"] = "any",
@@ -60,7 +60,7 @@
     },
     ["deps"] = {
     },
-    ["description"] = "Luna OS package manager (Luna OS package manager)",
+    ["description"] = "Luna OS package manager (POSIX-compliant package manager)",
     ["files"] = {
       "/usr/bin/core/dust.lua",
     },
@@ -109,9 +109,9 @@
   ["shadow"] = {
     ["architecture"] = "any",
     ["backup"] = {
+      "/etc/group",
       "/etc/passwd",
       "/etc/shadow",
-      "/etc/group",
     },
     ["build_date"] = "Sat Nov 21 21:00:00 2026",
     ["conflicts"] = {
