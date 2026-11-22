@@ -2,16 +2,35 @@
 local args = { ... }
 
 local DB_FILE   = "/etc/conf/dust.db"
+local SYSTEM_LUA  = "/etc/conf/system.lua"
 local SYSTEM_CONF = "/etc/conf/system.conf"
-local CONF_FILE   = "/etc/conf/dust.conf"
 local BIN_DIR     = "/usr/bin"
 
 --------------------------------------------------------------------------------
 -- Helpers & Configurations
 --------------------------------------------------------------------------------
 local function loadConf()
-    local conf = {}
-    if fs.exists(SYSTEM_CONF) then
+    local conf = {
+        repo_url = "https://raw.githubusercontent.com/TheEartHTM/luna/main/repo",
+        etc_compat = false,
+    }
+    if fs.exists(SYSTEM_LUA) then
+        local h = fs.open(SYSTEM_LUA, "r")
+        if h then
+            local code = h.readAll()
+            h.close()
+            local env = { source = function() end }
+            local fn = load(code, "@" .. SYSTEM_LUA, "t", env)
+            if fn then
+                local ok, res = pcall(fn)
+                if ok and type(res) == "table" and res.dust then
+                    for k, v in pairs(res.dust) do conf[k] = v end
+                elseif env.dust and type(env.dust) == "table" then
+                    for k, v in pairs(env.dust) do conf[k] = v end
+                end
+            end
+        end
+    elseif fs.exists(SYSTEM_CONF) then
         local h = fs.open(SYSTEM_CONF, "r")
         if h then
             local content = h.readAll()
@@ -19,17 +38,6 @@ local function loadConf()
             local ok, data = pcall(textutils.unserialize, content)
             if ok and type(data) == "table" and data.dust then
                 for k, v in pairs(data.dust) do conf[k] = v end
-            end
-        end
-    end
-    if not conf.repo_url and fs.exists(CONF_FILE) then
-        local h = fs.open(CONF_FILE, "r")
-        if h then
-            local content = h.readAll()
-            h.close()
-            local ok, data = pcall(textutils.unserialize, content)
-            if ok and type(data) == "table" then
-                for k, v in pairs(data) do conf[k] = v end
             end
         end
     end
@@ -297,7 +305,7 @@ local function getInitialDB()
             deps = {},
             path = "/usr/bin/core",
             etc_compat = false,
-            backup = { "/etc/conf/dust.conf", "/etc/conf/dust.db" },
+            backup = { "/etc/conf/dust.db" },
             install_reason = "explicit",
             install_date = "Wed Nov 18 15:28:00 2026",
             build_date = "Wed Nov 18 15:28:00 2026",

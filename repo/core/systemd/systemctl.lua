@@ -8,7 +8,7 @@ local SERVICES_DB = "/etc/conf/services.db"
 local function loadSystemConfig()
     local sysConf = {
         display = { text_scale = 0.5, redirect_to_monitor = true },
-        dust = { repo_url = "http://127.0.0.1:8080" },
+        dust = { repo_url = "https://raw.githubusercontent.com/TheEartHTM/luna/main/repo" },
         services = {},
         autostart = {}
     }

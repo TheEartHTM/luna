@@ -1,62 +1,23 @@
 -- Luna Guided Installer
 -- Designed to run directly in vanilla CraftOS on any CC computer
 
--- 1. Display & Monitor Multi-Output (mirrors output to native screen and all external monitors)
-local function setupDisplay()
-    local nativeTerm = term.native and term.native() or term.current()
-    local allMonitors = { nativeTerm }
-    local seenMons = {}
+-- 1. Display Setup: Stays strictly on primary native screen
+local nativeTerm = term.native and term.native() or term.current()
+term.redirect(nativeTerm)
 
-    if peripheral and peripheral.getNames then
-        for _, name in ipairs(peripheral.getNames()) do
-            local t = peripheral.getType(name)
-            if (t == "ceemonitor" or t == "monitor") and not seenMons[name] then
-                seenMons[name] = true
-                local m = peripheral.wrap(name)
-                if m then
-                    if m.setTextScale then pcall(m.setTextScale, 0.5) end
-                    pcall(m.clear)
-                    pcall(m.setCursorPos, 1, 1)
-                    table.insert(allMonitors, m)
-                end
+-- Blank external monitors to prevent residual text
+if peripheral and peripheral.getNames then
+    for _, name in ipairs(peripheral.getNames()) do
+        local t = peripheral.getType(name)
+        if t == "ceemonitor" or t == "monitor" then
+            local m = peripheral.wrap(name)
+            if m and m.clear then
+                pcall(m.clear)
+                pcall(m.setCursorBlink, false)
             end
         end
-    end
-    if _G.cee and _G.cee.getMonitors then
-        for pin = 1, 11 do
-            local ok, mons = pcall(_G.cee.getMonitors, pin)
-            if ok and mons and mons.getSize and not seenMons["cee_" .. pin] then
-                seenMons["cee_" .. pin] = true
-                if mons.setTextScale then pcall(mons.setTextScale, 0.5) end
-                pcall(mons.clear)
-                pcall(mons.setCursorPos, 1, 1)
-                table.insert(allMonitors, mons)
-            end
-        end
-    end
-
-    if #allMonitors > 1 then
-        local multi = {}
-        local voidMethods = { "write", "blit", "clear", "clearLine", "setCursorPos", "setCursorBlink", "scroll", "setTextColor", "setTextColour", "setBackgroundColor", "setBackgroundColour", "setPaletteColor", "setPaletteColour" }
-        for _, method in ipairs(voidMethods) do
-            multi[method] = function(...)
-                for _, m in ipairs(allMonitors) do
-                    if m and m[method] then pcall(m[method], ...) end
-                end
-            end
-        end
-        local queryMethods = { "getCursorPos", "getCursorBlink", "getSize", "getTextColor", "getTextColour", "getBackgroundColor", "getBackgroundColour", "isColor", "isColour", "getPaletteColor", "getPaletteColour" }
-        for _, method in ipairs(queryMethods) do
-            multi[method] = function(...)
-                local primary = allMonitors[1]
-                if primary and primary[method] then return primary[method](...) end
-            end
-        end
-        term.redirect(multi)
     end
 end
-
-setupDisplay()
 
 local term = term
 local colors = colors
@@ -148,22 +109,7 @@ end
 -- Resolve Repository URL
 local DEFAULT_GITHUB_REPO = "https://raw.githubusercontent.com/TheEartHTM/luna/main/repo"
 local tArgs = { ... }
-local REPO_URL = tArgs[1]
-if not REPO_URL or REPO_URL == "" then
-    local testOk, testRes = pcall(function() return http.get("http://127.0.0.1:8080/core/core.db") end)
-    if testOk and testRes then
-        REPO_URL = "http://127.0.0.1:8080"
-        testRes.close()
-    else
-        local lanOk, lanRes = pcall(function() return http.get("http://192.168.0.109:8080/core/core.db") end)
-        if lanOk and lanRes then
-            REPO_URL = "http://192.168.0.109:8080"
-            lanRes.close()
-        else
-            REPO_URL = DEFAULT_GITHUB_REPO
-        end
-    end
-end
+local REPO_URL = (tArgs[1] and tArgs[1] ~= "") and tArgs[1] or DEFAULT_GITHUB_REPO
 
 local compId = os.getComputerID and os.getComputerID() or 0
 printSys("INFO", string.format("Computer ID: %d | Repository: %s", compId, REPO_URL), colors.lightBlue)
@@ -547,13 +493,14 @@ local sysLuaContent = string.format([[-- /etc/conf/system.lua
 -- 1. Modular Config Sourcing
 -- source("/etc/conf/monitors.lua")
 
--- 2. Display & Monitor Workspaces
--- Chassis built-in screen is tty1. Additional monitors map to separate TTY seats.
+-- 2. Display & Multi-Monitor Configuration
+-- All monitors mirror console output with individual text scaling.
+-- Any specific monitor can be targeted directly via shell redirection: cmd > /dev/mon1
 monitors = {
-    -- Example multi-monitor setup:
-    -- { name = "main",  dev = "/dev/terminal", tty = "tty1", scale = 1.0, inputs = { "system" } },
-    -- { name = "left",  dev = "/dev/sig1",     tty = "tty2", scale = 0.5, inputs = { "sig1" } },
-    -- { name = "right", dev = "/dev/sig2",     tty = "tty3", scale = 0.5, inputs = { "sig2" } },
+    -- Example multi-monitor setup (supports any number of monitors):
+    -- { name = "main",  dev = "/dev/terminal", scale = 1.0 },
+    -- { name = "left",  dev = "/dev/mon1",     scale = 0.5 },
+    -- { name = "right", dev = "/dev/mon2",     scale = 0.5 },
 }
 
 -- 3. Autostart Applications (exec_once)
@@ -583,8 +530,7 @@ if sysH then
 end
 
 -- Backwards compatibility mirror files
-local dcfH = fs.open("/etc/conf/dust.conf", "w")
-if dcfH then dcfH.write(textutils.serialize({ repo_url = REPO_URL, etc_compat = false })); dcfH.close() end
+
 local srvH = fs.open("/etc/conf/services.db", "w")
 if srvH then srvH.write(textutils.serialize({})); srvH.close() end
 

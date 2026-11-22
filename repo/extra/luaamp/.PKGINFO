@@ -1,0 +1,11 @@
+# Generated for Luna OS
+pkgname = luaamp
+pkgver = 1.0.0-1
+pkgdesc = Feature-rich terminal and multi-monitor audio player for CEE speakers
+repo = extra
+path = /opt/luaamp
+group = multimedia
+license = MIT
+packager = Luna Build Team
+url = https://github.com/artitionoff/LuaAMP
+builddate = Sun Nov 22 19:30:00 2026

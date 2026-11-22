@@ -276,9 +276,10 @@ local function isVirtualFile(rel)
         -- Always handle virtual Luna devices: tty, speaker, monitors, keyboards, mice, signals
         if sub:match("^speaker%d*$") or sub == "audio" or sub == "sound" or sub == "dsp"
            or sub:match("^tty%d*$") or sub == "terminal"
-           or sub:match("^mon%d*$") or sub == "monitor"
+           or sub:match("^mon%d*$") or sub:match("^monitor%d*$") or sub == "monitor"
            or sub:match("^keyboard%d*$") or sub:match("^mouse%d*$")
-           or sub:match("^sig%d+$") then
+           or sub:match("^sig%d+$")
+           or (_G._DEVICE_MONITORS and _G._DEVICE_MONITORS[sub] ~= nil) then
             return true
         end
         getDevList()
@@ -347,14 +348,15 @@ local function openVirtual(rel, mode)
         getDevList()
 
         -- 1. TTY & Monitor terminal redirection: /dev/tty1, /dev/tty2, /dev/tty, /dev/terminal, /dev/mon0, /dev/mon, /dev/monitor
-        if sub:match("^tty%d+$") or sub == "tty" or sub == "terminal" or sub:match("^mon%d+$") or sub == "mon" or sub == "monitor" then
+        if sub:match("^tty%d+$") or sub == "tty" or sub == "terminal" or sub:match("^mon%d+$") or sub == "mon" or sub:match("^monitor%d*$") or (_G._DEVICE_MONITORS and _G._DEVICE_MONITORS[sub] ~= nil) then
             if mode:find("w") or mode:find("a") then
                 local targetTerm = nil
-                if sub:match("^tty%d+$") and _G._TTY_TERMS and _G._TTY_TERMS[sub] then
+                if _G._DEVICE_MONITORS and _G._DEVICE_MONITORS[sub] then
+                    targetTerm = _G._DEVICE_MONITORS[sub]
+                elseif sub:match("^tty%d+$") and _G._TTY_TERMS and _G._TTY_TERMS[sub] then
                     targetTerm = _G._TTY_TERMS[sub]
                 elseif (sub == "tty" or sub == "terminal") then
-                    local curTTY = (_G.kernel and _G.kernel.getTTY and _G.kernel.getTTY()) or "tty1"
-                    targetTerm = (_G._TTY_TERMS and _G._TTY_TERMS[curTTY]) or (term and term.current and term.current())
+                    targetTerm = (_G._DEVICE_MONITORS and _G._DEVICE_MONITORS["terminal"]) or (term and term.native and term.native()) or (term and term.current and term.current())
                 elseif devCache.map[sub] and (devCache.map[sub].type == "monitor" or devCache.map[sub].type == "ceemonitor") then
                     targetTerm = peripheral.wrap(devCache.map[sub].name)
                 elseif devCache.map["mon0"] then

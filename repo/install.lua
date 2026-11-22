@@ -1,57 +1,22 @@
 -- Luna OS Stage-1 Bootstrap Installer (install.lua)
 -- Lightweight loader: initializes VFS storage pool, then pulls and launches setup.lua
 
--- 1. Setup Display & Monitor Multi-Output (mirrors output to native screen and all external monitors)
+-- 1. Display Setup: Stays strictly on primary native screen
 local nativeTerm = term.native and term.native() or term.current()
-local allMonitors = { nativeTerm }
-local seenMons = {}
+term.redirect(nativeTerm)
 
+-- Blank external monitors
 if peripheral and peripheral.getNames then
     for _, name in ipairs(peripheral.getNames()) do
         local t = peripheral.getType(name)
-        if (t == "ceemonitor" or t == "monitor") and not seenMons[name] then
-            seenMons[name] = true
+        if t == "ceemonitor" or t == "monitor" then
             local m = peripheral.wrap(name)
-            if m then
-                if m.setTextScale then pcall(m.setTextScale, 0.5) end
+            if m and m.clear then
                 pcall(m.clear)
-                pcall(m.setCursorPos, 1, 1)
-                table.insert(allMonitors, m)
+                pcall(m.setCursorBlink, false)
             end
         end
     end
-end
-if _G.cee and _G.cee.getMonitors then
-    for pin = 1, 11 do
-        local ok, mons = pcall(_G.cee.getMonitors, pin)
-        if ok and mons and mons.getSize and not seenMons["cee_" .. pin] then
-            seenMons["cee_" .. pin] = true
-            if mons.setTextScale then pcall(mons.setTextScale, 0.5) end
-            pcall(mons.clear)
-            pcall(mons.setCursorPos, 1, 1)
-            table.insert(allMonitors, mons)
-        end
-    end
-end
-
-if #allMonitors > 1 then
-    local multi = {}
-    local voidMethods = { "write", "blit", "clear", "clearLine", "setCursorPos", "setCursorBlink", "scroll", "setTextColor", "setTextColour", "setBackgroundColor", "setBackgroundColour", "setPaletteColor", "setPaletteColour" }
-    for _, method in ipairs(voidMethods) do
-        multi[method] = function(...)
-            for _, m in ipairs(allMonitors) do
-                if m and m[method] then pcall(m[method], ...) end
-            end
-        end
-    end
-    local queryMethods = { "getCursorPos", "getCursorBlink", "getSize", "getTextColor", "getTextColour", "getBackgroundColor", "getBackgroundColour", "isColor", "isColour", "getPaletteColor", "getPaletteColour" }
-    for _, method in ipairs(queryMethods) do
-        multi[method] = function(...)
-            local primary = allMonitors[1]
-            if primary and primary[method] then return primary[method](...) end
-        end
-    end
-    term.redirect(multi)
 end
 
 local isColor = term.isColor and term.isColor()
@@ -75,18 +40,8 @@ end
 
 -- 3. Resolve Repository URL
 local DEFAULT_GITHUB_REPO = "https://raw.githubusercontent.com/TheEartHTM/luna/main/repo"
-local REPO_URL = DEFAULT_GITHUB_REPO
-local testOk, testRes = pcall(function() return http.get("http://127.0.0.1:8080/core/core.db") end)
-if testOk and testRes then
-    REPO_URL = "http://127.0.0.1:8080"
-    testRes.close()
-else
-    local lanOk, lanRes = pcall(function() return http.get("http://192.168.0.109:8080/core/core.db") end)
-    if lanOk and lanRes then
-        REPO_URL = "http://192.168.0.109:8080"
-        lanRes.close()
-    end
-end
+local tArgs = { ... }
+local REPO_URL = tArgs[1] or DEFAULT_GITHUB_REPO
 
 -- 4. Download and Mount VFS Storage Pool
 setColor(colors.lightBlue)

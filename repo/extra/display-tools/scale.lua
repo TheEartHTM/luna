@@ -1,8 +1,7 @@
 -- display.lua - Screen and Monitor text scale configurator for Luna OS
 local args = { ... }
 
-local SYSTEM_CONF = "/etc/conf/system.conf"
-local CONF_FILE = "/etc/conf/display.conf"
+local SYSTEM_CONF = "/etc/conf/system.lua"
 
 local function loadConfig()
     local conf = {
@@ -14,21 +13,13 @@ local function loadConfig()
         if h then
             local content = h.readAll()
             h.close()
-            local ok, data = pcall(textutils.unserialize, content)
-            if ok and type(data) == "table" and data.display then
-                for k, v in pairs(data.display) do conf[k] = v end
-                return conf
-            end
-        end
-    end
-    if fs.exists(CONF_FILE) then
-        local h = fs.open(CONF_FILE, "r")
-        if h then
-            local content = h.readAll()
-            h.close()
-            local ok, data = pcall(textutils.unserialize, content)
-            if ok and type(data) == "table" then
-                for k, v in pairs(data) do conf[k] = v end
+            local fn = load(content, "@" .. SYSTEM_CONF, "t", {})
+            if fn then
+                local ok, data = pcall(fn)
+                if ok and type(data) == "table" and data.display then
+                    for k, v in pairs(data.display) do conf[k] = v end
+                    return conf
+                end
             end
         end
     end
@@ -37,24 +28,6 @@ end
 
 local function saveConfig(conf)
     if not fs.exists("/etc/conf") then fs.makeDir("/etc/conf") end
-    if fs.exists(SYSTEM_CONF) then
-        local h = fs.open(SYSTEM_CONF, "r")
-        local sysConf = {}
-        if h then
-            sysConf = textutils.unserialize(h.readAll()) or {}
-            h.close()
-        end
-        sysConf.display = conf
-        local h2 = fs.open(SYSTEM_CONF, "w")
-        if h2 then
-            h2.write(textutils.serialize(sysConf))
-            h2.close()
-        end
-    end
-    local h = fs.open(CONF_FILE, "w")
-    if not h then return false end
-    h.write(textutils.serialize(conf))
-    h.close()
     return true
 end
 

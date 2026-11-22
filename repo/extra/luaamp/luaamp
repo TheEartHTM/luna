@@ -1,0 +1,9 @@
+-- /usr/bin/extra/luaamp - LuaAMP Music Player CLI launcher for Luna OS
+local args = { ... }
+local script = "/opt/luaamp/player.lua"
+if not fs.exists(script) then
+    printError("luaamp: player executable not found at " .. script)
+    return 1
+end
+
+return shell.run(script, table.unpack(args))

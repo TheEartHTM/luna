@@ -17,13 +17,64 @@ local ttyTerms = {}
 local ttyList = {}
 local activeTTY = "tty1"
 local ttyOwners = {}
+local coroTerms = {}
+local monitorList = {}
+
+local nativeTerm = term.native and term.native() or term.current()
+
+local function getCoroTerm()
+    local co = coroutine.running()
+    if not co then return nativeTerm end
+    if coroTerms[co] then return coroTerms[co] end
+    local myTTY = ttyOwners[co]
+    if myTTY and ttyTerms[myTTY] then
+        return ttyTerms[myTTY]
+    end
+    return nativeTerm
+end
+
+local vTerm = {}
+local termMethods = {
+    "write", "scroll", "setCursorPos", "setCursorBlink", "getCursorPos", "getCursorBlink",
+    "getSize", "clear", "clearLine", "setTextColour", "setTextColor", "setBackgroundColour",
+    "setBackgroundColor", "isColour", "isColor", "getTextColour", "getTextColor",
+    "getBackgroundColour", "getBackgroundColor", "blit", "setPaletteColour", "setPaletteColor",
+    "getPaletteColour", "getPaletteColor"
+}
+for _, m in ipairs(termMethods) do
+    vTerm[m] = function(...)
+        local target = getCoroTerm()
+        if target and target[m] then
+            return target[m](...)
+        elseif nativeTerm and nativeTerm[m] then
+            return nativeTerm[m](...)
+        end
+    end
+end
+vTerm.native = function() return nativeTerm end
+vTerm.current = function() return getCoroTerm() end
+vTerm.redirect = function(target)
+    local co = coroutine.running()
+    local old = getCoroTerm()
+    if co then
+        coroTerms[co] = target
+    end
+    return old
+end
+
+_G.term = vTerm
 
 local origCoroCreate = coroutine.create
 coroutine.create = function(f)
     local parent = coroutine.running()
     local child = origCoroCreate(f)
-    if parent and ttyOwners[parent] then
-        ttyOwners[child] = ttyOwners[parent]
+    if parent then
+        if ttyOwners[parent] then
+            ttyOwners[child] = ttyOwners[parent]
+        end
+        if coroTerms[parent] then
+            coroTerms[child] = coroTerms[parent]
+        end
     end
     return child
 end
@@ -72,7 +123,7 @@ local function resolveDev(devName)
         if peripheral.isPresent(rawDev) then
             return peripheral.wrap(rawDev), rawDev, true
         end
-        local monIdx = rawDev:match("^mon(%d+)$")
+        local monIdx = rawDev:match("^mon(%d+)$") or rawDev:match("^monitor(%d+)$") or rawDev:match("^monitor_(%d+)$")
         if monIdx then
             local targetIdx = tonumber(monIdx)
             local curr = 0
@@ -381,7 +432,7 @@ end
 local systemConfig = nil
 local displayInitialized = false
 
--- Post-Login Multi-Display & Multi-Seat Initializer
+-- Multi-Monitor & Workspace Initializer (1 monitor = 1 TTY with individual resolution and command-based focus switching)
 local function initDisplay()
     if displayInitialized then return end
     displayInitialized = true
@@ -390,86 +441,182 @@ local function initDisplay()
     local conf = systemConfig
 
     local nativeTerm = term.native and term.native() or term.current()
+    ttyTerms = {}
+    monitorList = {}
     devToTTY = {
         ["system"] = "tty1",
         ["/dev/system"] = "tty1",
         ["builtin"] = "tty1",
-        ["/dev/keyboard0"] = "tty1",
-        ["keyboard0"] = "tty1"
-    }
-    pinToTTY = {}
-    monitorToTTY = {
         ["terminal"] = "tty1",
-        ["/dev/terminal"] = "tty1"
+        ["/dev/terminal"] = "tty1",
+        ["console"] = "tty1",
+        ["/dev/console"] = "tty1",
+        ["1"] = "tty1"
     }
-    local ttyMonMap = {
-        ["tty1"] = { nativeTerm }
+    local devMonitors = {
+        ["terminal"] = nativeTerm,
+        ["/dev/terminal"] = nativeTerm,
+        ["console"] = nativeTerm,
+        ["/dev/console"] = nativeTerm
     }
 
+    local configuredObjects = {}
+    local ttyCounter = 1
+
+    -- 1. Load monitors from declarative configuration (monitors = { ... })
     if type(conf.monitors) == "table" and #conf.monitors > 0 then
-        for _, mCfg in ipairs(conf.monitors) do
+        for idx, mCfg in ipairs(conf.monitors) do
             local mObj, devKey, supportsScale = resolveDev(mCfg.dev)
             if mObj then
-                local ttyName = mCfg.tty or "tty1"
+                local ttyName = "tty" .. ttyCounter
+                ttyCounter = ttyCounter + 1
+
                 local isBuiltin = (mCfg.builtin == true or mCfg.buildin == true)
                     or (mCfg.dev == "/dev/terminal" or mCfg.dev == "terminal" or mCfg.dev == "builtin" or mCfg.dev == "system")
-                
+
+                -- Compute and apply individual text scale per monitor
                 if not isBuiltin and supportsScale and mObj.setTextScale then
-                    local scale = mCfg.scale or calcScale(mCfg.blocks, mCfg.width, mCfg.height)
+                    local scale = mCfg.scale
+                    if not scale and (mCfg.blocks or mCfg.width or mCfg.height) then
+                        scale = calcScale(mCfg.blocks, mCfg.width, mCfg.height)
+                    end
+                    if not scale then
+                        if mObj.getSize then
+                            pcall(mObj.setTextScale, 1.0)
+                            local w, h = mObj.getSize()
+                            if w and h then
+                                scale = calcScale(math.ceil(w / 7), math.ceil(w / 7), math.ceil(h / 5))
+                            end
+                        end
+                    end
+                    if not scale or scale <= 0 then scale = 0.5 end
                     pcall(mObj.setTextScale, scale)
                 end
                 pcall(mObj.clear)
                 pcall(mObj.setCursorPos, 1, 1)
 
-                ttyMonMap[ttyName] = ttyMonMap[ttyName] or {}
-                table.insert(ttyMonMap[ttyName], mObj)
+                ttyTerms[ttyName] = mObj
+                configuredObjects[mObj] = true
 
+                local monIdx = idx - 1
+                local monDev = "/dev/mon" .. monIdx
+                devMonitors["mon" .. monIdx] = mObj
+                devMonitors[monDev] = mObj
+                devMonitors["monitor" .. monIdx] = mObj
+                devMonitors["/dev/monitor" .. monIdx] = mObj
+
+                devToTTY[monDev] = ttyName
+                devToTTY["mon" .. monIdx] = ttyName
+                devToTTY["/dev/monitor" .. monIdx] = ttyName
+                devToTTY["monitor" .. monIdx] = ttyName
+                devToTTY[tostring(monIdx)] = ttyName
+                devToTTY[tostring(ttyCounter - 1)] = ttyName
+
+                if mCfg.name and mCfg.name ~= "" then
+                    devMonitors[mCfg.name] = mObj
+                    devMonitors["/dev/" .. mCfg.name] = mObj
+                    devToTTY[mCfg.name] = ttyName
+                    devToTTY["/dev/" .. mCfg.name] = ttyName
+                end
                 if devKey then
-                    monitorToTTY[devKey] = ttyName
-                    monitorToTTY["/dev/" .. devKey] = ttyName
+                    devMonitors[devKey] = mObj
+                    devMonitors["/dev/" .. devKey] = mObj
+                    devToTTY[devKey] = ttyName
+                    devToTTY["/dev/" .. devKey] = ttyName
                 end
                 if mCfg.dev then
-                    monitorToTTY[mCfg.dev] = ttyName
-                    monitorToTTY[mCfg.dev:gsub("^/dev/", "")] = ttyName
+                    local clean = mCfg.dev:gsub("^/dev/", "")
+                    devMonitors[clean] = mObj
+                    devMonitors[mCfg.dev] = mObj
+                    devToTTY[clean] = ttyName
+                    devToTTY[mCfg.dev] = ttyName
                 end
 
-                local function bindInput(inp)
-                    if not inp then return end
-                    local strInp = tostring(inp)
-                    local sLower = strInp:lower()
-                    if sLower == "system" or sLower == "/dev/system" or sLower == "chassis" or sLower == "builtin" or sLower == "/dev/keyboard0" then
-                        devToTTY["system"] = ttyName
-                        devToTTY["/dev/system"] = ttyName
-                        devToTTY["builtin"] = ttyName
-                        devToTTY["/dev/keyboard0"] = ttyName
-                        devToTTY["keyboard0"] = ttyName
-                    else
-                        local pNum = tonumber(strInp:match("%d+"))
-                        if pNum and (type(inp) == "number" or strInp:find("sig") or strInp:find("pin") or strInp:match("^%d+$")) then
-                            pinToTTY[pNum] = ttyName
-                            pinToTTY["/dev/sig" .. pNum] = ttyName
-                            pinToTTY["sig" .. pNum] = ttyName
-                        end
-                        devToTTY[strInp] = ttyName
-                        devToTTY[strInp:gsub("^/dev/", "")] = ttyName
-                    end
-                end
-
-                if type(mCfg.inputs) == "table" then
-                    for _, inp in ipairs(mCfg.inputs) do bindInput(inp) end
-                elseif mCfg.inputs ~= nil or mCfg.input ~= nil then
-                    bindInput(mCfg.inputs or mCfg.input)
-                end
-                if mCfg.pin then bindInput(mCfg.pin) end
+                table.insert(monitorList, {
+                    name = mCfg.name or ("mon" .. monIdx),
+                    dev = mCfg.dev or monDev,
+                    tty = ttyName,
+                    obj = mObj
+                })
             end
         end
     end
 
-    for ttyName, monList in pairs(ttyMonMap) do
-        ttyTerms[ttyName] = createMultiTerm(deduplicateMonitors(monList))
+    -- 2. Auto-discover any attached monitors (any count N >= 1) not in config
+    local discovered = findAllMonitors()
+    for _, item in ipairs(discovered) do
+        local mObj = item.obj
+        if mObj and not configuredObjects[mObj] then
+            local ttyName = "tty" .. ttyCounter
+            ttyCounter = ttyCounter + 1
+
+            if mObj.setTextScale then pcall(mObj.setTextScale, 0.5) end
+            pcall(mObj.clear)
+            pcall(mObj.setCursorPos, 1, 1)
+
+            ttyTerms[ttyName] = mObj
+            configuredObjects[mObj] = true
+
+            local autoIdx = ttyCounter - 1
+            local devKey = item.name or ("mon" .. autoIdx)
+            local monDev = "/dev/" .. devKey
+            devMonitors[devKey] = mObj
+            devMonitors[monDev] = mObj
+            devToTTY[devKey] = ttyName
+            devToTTY[monDev] = ttyName
+            devToTTY[tostring(autoIdx)] = ttyName
+
+            table.insert(monitorList, {
+                name = devKey,
+                dev = monDev,
+                tty = ttyName,
+                obj = mObj
+            })
+        end
     end
 
+    -- If tty1 is not assigned, bind chassis terminal to tty1
+    if not ttyTerms["tty1"] then
+        ttyTerms["tty1"] = nativeTerm
+        table.insert(monitorList, 1, {
+            name = "main",
+            dev = "/dev/terminal",
+            tty = "tty1",
+            obj = nativeTerm
+        })
+    end
+
+    _G._DEVICE_MONITORS = devMonitors
     _G._TTY_TERMS = ttyTerms
+    _G._MONITOR_LIST = monitorList
+    _G._DEV_TO_TTY = devToTTY
+    activeTTY = "tty1"
+    _G.ACTIVE_TTY = activeTTY
+end
+
+_G.setFocus = function(target)
+    if not target then return false, "No target specified" end
+    local s = tostring(target):gsub("/+$", "")
+    local devMap = _G._DEV_TO_TTY or devToTTY
+    local tty = devMap[s] or devMap["/dev/" .. s] or devMap[s:gsub("^/dev/", "")]
+    if not tty then
+        local num = tonumber(s:match("%d+"))
+        if num and devMap[tostring(num)] then
+            tty = devMap[tostring(num)]
+        elseif num and ttyTerms["tty" .. num] then
+            tty = "tty" .. num
+        end
+    end
+    if tty and ttyTerms[tty] then
+        activeTTY = tty
+        _G.ACTIVE_TTY = tty
+        return true, tty
+    end
+    return false, "Device or monitor not found: " .. tostring(target)
+end
+
+_G.getFocus = function()
+    return activeTTY or "tty1"
 end
 
 -- Primary Console Boot Setup (Stays strictly on chassis screen)
@@ -1195,7 +1342,7 @@ _G.logBootWarn = nil
 _G.logBootSection = nil
 _G.logBootFail = nil
 
--- Global Keyboard Signal Handler & TTY Input Multiplexer
+-- Global Keyboard Signal Handler (Ctrl+C -> terminate)
 local origPullEventRaw = os.pullEventRaw
 local ctrlHeld = false
 
@@ -1208,82 +1355,32 @@ os.pullEventRaw = function(sFilter)
         if ev == "key" then
             local isCtrl = (p1 == 341 or p1 == 345 or p1 == 29 or p1 == 157)
                 or (keys and (p1 == keys.leftCtrl or p1 == keys.rightCtrl or p1 == keys.leftControl or p1 == keys.rightControl))
-            local isAlt = (p1 == 342 or p1 == 346 or p1 == 56 or p1 == 184)
-                or (keys and (p1 == keys.leftAlt or p1 == keys.rightAlt))
             local isC = (p1 == 67 or p1 == 46 or (keys and p1 == keys.c))
 
             if isCtrl then
                 ctrlHeld = true
-            elseif isAlt then
-                altHeld = true
             elseif isC and ctrlHeld then
-                local myTTY = ttyOwners[coroutine.running()] or activeTTY
-                if myTTY == activeTTY then
+                local myTTY = ttyOwners[coroutine.running()]
+                if myTTY == activeTTY or not myTTY then
                     return "terminate"
                 end
-            end
-
-            -- Virtual Terminal Switching Hotkeys (F1..F6 or Ctrl/Alt + 1..6)
-            if p1 == 290 or (keys and p1 == keys.f1) or ((ctrlHeld or altHeld) and (p1 == 49 or (keys and p1 == keys.one))) then
-                if ttyTerms["tty1"] then activeTTY = "tty1" end
-            elseif p1 == 291 or (keys and p1 == keys.f2) or ((ctrlHeld or altHeld) and (p1 == 50 or (keys and p1 == keys.two))) then
-                if ttyTerms["tty2"] then activeTTY = "tty2" end
-            elseif p1 == 292 or (keys and p1 == keys.f3) or ((ctrlHeld or altHeld) and (p1 == 51 or (keys and p1 == keys.three))) then
-                if ttyTerms["tty3"] then activeTTY = "tty3" end
-            elseif p1 == 293 or (keys and p1 == keys.f4) or ((ctrlHeld or altHeld) and (p1 == 52 or (keys and p1 == keys.four))) then
-                if ttyTerms["tty4"] then activeTTY = "tty4" end
-            elseif p1 == 294 or (keys and p1 == keys.f5) or ((ctrlHeld or altHeld) and (p1 == 53 or (keys and p1 == keys.five))) then
-                if ttyTerms["tty5"] then activeTTY = "tty5" end
-            elseif p1 == 295 or (keys and p1 == keys.f6) or ((ctrlHeld or altHeld) and (p1 == 54 or (keys and p1 == keys.six))) then
-                if ttyTerms["tty6"] then activeTTY = "tty6" end
             end
         elseif ev == "key_up" then
             local isCtrl = (p1 == 341 or p1 == 345 or p1 == 29 or p1 == 157)
                 or (keys and (p1 == keys.leftCtrl or p1 == keys.rightCtrl or p1 == keys.leftControl or p1 == keys.rightControl))
-            local isAlt = (p1 == 342 or p1 == 346 or p1 == 56 or p1 == 184)
-                or (keys and (p1 == keys.leftAlt or p1 == keys.rightAlt))
             if isCtrl then
                 ctrlHeld = false
-            elseif isAlt then
-                altHeld = false
-            end
-        elseif ev == "monitor_touch" then
-            local side = p1
-            local targetTTY = monitorToTTY[side] or monitorToTTY["/dev/" .. tostring(side)]
-            if targetTTY and ttyTerms[targetTTY] then
-                activeTTY = targetTTY
             end
         end
 
-        local myTTY = ttyOwners[coroutine.running()] or activeTTY
-        local isInputEvent = (ev == "key" or ev == "key_up" or ev == "char" or ev == "paste" or (type(ev) == "string" and ev:sub(1, 5) == "mouse"))
-
+        local isInputEvent = (ev == "key" or ev == "key_up" or ev == "char" or ev == "paste")
         if isInputEvent then
-            local eventTargetTTY = nil
-            for idx = 2, eventData.n do
-                local val = eventData[idx]
-                if type(val) == "string" then
-                    local clean = val:gsub("^/dev/", "")
-                    if devToTTY[val] then eventTargetTTY = devToTTY[val]; break end
-                    if devToTTY[clean] then eventTargetTTY = devToTTY[clean]; break end
-                    local p = val:match("sig(%d+)") or val:match("pin(%d+)")
-                    if p and pinToTTY[tonumber(p)] then eventTargetTTY = pinToTTY[tonumber(p)]; break end
-                elseif type(val) == "number" then
-                    if pinToTTY[val] then eventTargetTTY = pinToTTY[val]; break end
-                end
-            end
-
-            -- Default behavior: if no external hardware pin or dev was attached, this is the built-in chassis keyboard
-            if not eventTargetTTY then
-                eventTargetTTY = devToTTY["system"] or devToTTY["builtin"] or devToTTY["/dev/keyboard0"] or "tty1"
-            end
-
-            -- Strict seat isolation: only deliver input to the coroutine bound to this seat/TTY!
-            if myTTY == eventTargetTTY or not myTTY then
+            local myTTY = ttyOwners[coroutine.running()]
+            -- Deliver keyboard events strictly to the currently focused TTY!
+            if myTTY == activeTTY or not myTTY then
                 return table.unpack(eventData, 1, eventData.n)
             end
         else
-            -- System / broadcast / network / timer events delivered to all coroutines
             return table.unpack(eventData, 1, eventData.n)
         end
     end
@@ -2058,68 +2155,58 @@ local function runBackgroundServices()
     end
 end
 
-local function runTTYInteractiveSession(thisTTY)
+local function runTTYSession(thisTTY)
     local co = coroutine.running()
     ttyOwners[co] = thisTTY
 
-    -- Wait until kernel daemons and services are ready
     while not _G._SERVICES_READY do
         sleep(0.05)
     end
 
-    -- Secondary TTYs (tty2, tty3, etc.) wait until user logs into tty1 on chassis console
-    if thisTTY ~= "tty1" then
-        while not _G._MULTI_DISPLAY_READY do
-            sleep(0.1)
-        end
+    local thisTerm = ttyTerms[thisTTY]
+    if not thisTerm then
+        return
     end
 
-    while true do
-        local thisTerm = ttyTerms[thisTTY]
-        if not thisTerm then
-            -- TTY is not mapped to any display device; idle until activated
-            while not ttyTerms[thisTTY] do
-                sleep(0.5)
-            end
-            thisTerm = ttyTerms[thisTTY]
-        end
+    coroTerms[co] = thisTerm
 
-        term.redirect(thisTerm)
+    while true do
         thisTerm.clear()
         thisTerm.setCursorPos(1, 1)
 
-        -- If external TTY, display console header banner
-        if thisTTY ~= "tty1" then
-            print(string.format("Luna OS (%s)", thisTTY))
-            print()
-        end
-
-        local user = authenticateUser()
-        _G.CURRENT_USER = user
-        _G.LOGIN_USER   = user
-
-        -- On tty1 initial login, initialize multi-display layout and autostarts
-        if thisTTY == "tty1" and not _G._MULTI_DISPLAY_READY then
-            initDisplay()
+        -- If tty1, authenticate user. Secondary TTYs auto-inherit logged-in user without asking for login!
+        local user = "root"
+        if thisTTY == "tty1" then
+            user = authenticateUser()
+            _G.CURRENT_USER = user
+            _G.LOGIN_USER   = user
             _G._MULTI_DISPLAY_READY = true
+        else
+            while not _G._MULTI_DISPLAY_READY do
+                sleep(0.05)
+            end
+            user = _G.CURRENT_USER or "root"
         end
 
         local okK, errK = pcall(runLunaShell)
         if not okK then
-            term.redirect(thisTerm)
-            printError("Kernel Panic / Shell crashed on " .. thisTTY .. ": " .. tostring(errK))
+            thisTerm.clear()
+            thisTerm.setCursorPos(1, 1)
+            printError("Shell crashed on " .. thisTTY .. ": " .. tostring(errK))
             print("Press any key to restart shell...")
             os.pullEvent("key")
         end
     end
 end
 
--- Launch interactive sessions for virtual terminals tty1..tty6
+-- Launch interactive sessions dynamically for all active TTYs/monitors
+initDisplay()
+
 local ttyRunners = {}
-for i = 1, 6 do
-    local ttyName = "tty" .. i
+for ttyName, _ in pairs(ttyTerms) do
+    local name = ttyName
     table.insert(ttyRunners, function()
-        runTTYInteractiveSession(ttyName)
+        runTTYSession(name)
     end)
 end
 
