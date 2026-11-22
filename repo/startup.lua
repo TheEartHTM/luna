@@ -763,6 +763,19 @@ if fs.exists(systemdPath) then
     end
 end
 
+local sandboxPath = fs.exists("/usr/bin/core/sandbox.lua") and "/usr/bin/core/sandbox.lua" or "/etc/sandbox.lua"
+if fs.exists(sandboxPath) then
+    local sFn = loadfile(sandboxPath)
+    if sFn then
+        local sOk, sMod = pcall(sFn, "--module")
+        if sOk and type(sMod) == "table" then
+            _G.sandbox = sMod
+            if _G.systemd then _G.systemd.sandbox = sMod end
+            logBootOk("Started Process Sandboxing Subsystem (sandbox)")
+        end
+    end
+end
+
 -- Kernel Core Subsystem, Process Table & Unified Syscall Dispatcher
 local SYS = {
     EXIT        = 1,
@@ -1740,10 +1753,22 @@ local function executeCommandWithRedirection(cmdWords, pipeInput)
     end
 
     local okExec, errExec = pcall(function()
-        if prog:sub(-3) == ".sh" then
-            shell.execute("/usr/bin/core/sh", prog, table.unpack(expandedArgs))
+        local curUser = _G.CURRENT_USER or "root"
+        local name = fs.getName(prog):gsub("%.lua$", "")
+        local isSetuid = (name == "sudo" or name == "su" or name == "passwd")
+
+        if curUser ~= "root" and not isSetuid and _G.sandbox and _G.sandbox.run then
+            if prog:sub(-3) == ".sh" then
+                _G.sandbox.run("/usr/bin/core/sh", { prog, table.unpack(expandedArgs) }, { profile = "user", user = curUser })
+            else
+                _G.sandbox.run(prog, expandedArgs, { profile = "user", user = curUser })
+            end
         else
-            shell.execute(prog, table.unpack(expandedArgs))
+            if prog:sub(-3) == ".sh" then
+                shell.execute("/usr/bin/core/sh", prog, table.unpack(expandedArgs))
+            else
+                shell.execute(prog, table.unpack(expandedArgs))
+            end
         end
     end)
 

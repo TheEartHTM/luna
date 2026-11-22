@@ -287,3 +287,28 @@ tty.switch("tty2")
 The Stage-2 kernel daemon loop directly intercepts `cee_message`, `cee_packet`, and `modem_message` events:
 * When a packet with `cmd == "PING"` arrives for the local host's IP address, the kernel automatically generates a `PONG` response packet.
 * Ping responses occur at the kernel level without requiring userland network daemons or SSH servers to be running.
+
+---
+
+## 12. Process Sandboxing & Isolation Subsystem (_G.sandbox / /usr/bin/core/sandbox.lua)
+
+The `sandbox` subsystem provides secure, sandboxed execution of userland binaries and untrusted scripts, preventing unprivileged processes from accessing kernel internals or performing destructive operations.
+
+### CLI Usage:
+```bash
+# Strict compute/TUI sandbox (no filesystem, no network, no reboot):
+sandbox --strict script.lua
+
+# Filesystem chroot jail into specified directory:
+sandbox --root /home/user untrusted_app.lua
+
+# Read-only filesystem execution without network:
+sandbox -R --no-net app.lua
+```
+
+### Security & Architecture Highlights:
+1. **Self-Referential Global Scope (`_G = env`)**: The child process receives an isolated environment where `_G` points to its own table, completely shielding kernel tables (`_G.CURRENT_USER`, `_G._DAEMON_THREADS`, `_G.systemd`, `_G.ORIG_FS`).
+2. **System Call Sanitization**: Destructive calls such as `os.shutdown()` and `os.reboot()` throw `permission denied (insufficient privileges in sandbox)`.
+3. **Chroot VFS Layer**: Path normalization guarantees that directory traversal sequences (`../../`) cannot escape the jail boundary.
+4. **Automatic Non-Root Sandbox in Shells**: `sh.lua` and `bash.lua` automatically dispatch non-root user commands into the `user` sandbox profile, while setuid binaries (`sudo`, `su`, `passwd`) retain their standard privilege elevation workflows.
+

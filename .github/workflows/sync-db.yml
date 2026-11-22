@@ -1,0 +1,64 @@
+name: Sync Package Databases
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'repo/**/.PKGINFO'
+      - 'repo/core/**'
+      - 'repo/extra/**'
+      - 'tools/sync_db.py'
+      - '.github/workflows/sync-db.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'repo/**/.PKGINFO'
+      - 'repo/core/**'
+      - 'repo/extra/**'
+      - 'tools/sync_db.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-databases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Check / Sync Databases
+        id: sync
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo ":: Running database verification in check-only mode..."
+            python3 tools/sync_db.py --check
+          else
+            echo ":: Running database synchronizer..."
+            python3 tools/sync_db.py
+          fi
+
+      - name: Commit & Push Database Changes
+        if: github.event_name != 'pull_request'
+        run: |
+          git status
+          if ! git diff --quiet repo/core/core.db repo/extra/extra.db; then
+            echo ":: Changes detected in package databases, committing..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add repo/core/core.db repo/extra/extra.db
+            git commit -m "chore(repo): auto-sync package databases from .PKGINFO [skip ci]"
+            git push origin main
+          else
+            echo ":: No database changes needed. Repository is clean."
+          fi
