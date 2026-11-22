@@ -1,6 +1,6 @@
 # Generated for Luna OS
 pkgname = luaamp
-pkgver = 1.0.0-1
+pkgver = 1.0.0-2
 pkgdesc = Feature-rich terminal and multi-monitor audio player for CEE speakers
 repo = extra
 path = /opt/luaamp

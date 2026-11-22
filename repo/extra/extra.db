@@ -2,11 +2,9 @@
   ["curl"] = {
     ["architecture"] = "any",
     ["backup"] = {
-
     },
     ["build_date"] = "Sat Nov 21 21:00:00 2026",
     ["conflicts"] = {
-
     },
     ["deps"] = {
       "iproute2",
@@ -23,7 +21,7 @@
     ["path"] = "/usr/bin/extra",
     ["provides"] = "None",
     ["repo"] = "extra",
-    ["size"] = 10999,
+    ["size"] = 10988,
     ["url"] = "https://curl.se/",
     ["version"] = "8.9.1-1",
   },
@@ -34,7 +32,6 @@
     },
     ["build_date"] = "Sat Nov 21 21:00:00 2026",
     ["conflicts"] = {
-
     },
     ["deps"] = {
       "iproute2",
@@ -53,10 +50,10 @@
     ["provides"] = "None",
     ["repo"] = "extra",
     ["service"] = {
-      ["desc"] = "Luna DHCP & DNS Server Daemon (Cluster/CEE)",
-      ["name"] = "dhcpd",
-      ["order"] = 10,
       ["script"] = "/usr/bin/extra/dhcpd.lua",
+      ["order"] = 10,
+      ["name"] = "dhcpd",
+      ["desc"] = "Luna DHCP & DNS Server Daemon (Cluster/CEE)",
     },
     ["size"] = 36380,
     ["url"] = "https://github.com/TheEartHTM/luna",
@@ -69,10 +66,8 @@
     },
     ["build_date"] = "Sat Nov 21 21:00:00 2026",
     ["conflicts"] = {
-
     },
     ["deps"] = {
-
     },
     ["description"] = "Multi-monitor and TTY workspace management utilities",
     ["files"] = {
@@ -88,21 +83,18 @@
     ["path"] = "/usr/bin/extra",
     ["provides"] = "None",
     ["repo"] = "extra",
-    ["size"] = 14318,
+    ["size"] = 14022,
     ["url"] = "https://github.com/TheEartHTM/luna",
     ["version"] = "1.0.0-2",
   },
   ["fastfetch"] = {
     ["architecture"] = "any",
     ["backup"] = {
-
     },
     ["build_date"] = "Sat Nov 21 21:00:00 2026",
     ["conflicts"] = {
-
     },
     ["deps"] = {
-
     },
     ["description"] = "Fast and customizable system information tool for Luna OS",
     ["files"] = {
@@ -120,98 +112,6 @@
     ["url"] = "https://github.com/fastfetch-cli/fastfetch",
     ["version"] = "1.0.4-1",
   },
-  ["media-tools"] = {
-    ["architecture"] = "any",
-    ["backup"] = {
-
-    },
-    ["build_date"] = "Sat Nov 21 21:00:00 2026",
-    ["conflicts"] = {
-
-    },
-    ["deps"] = {
-
-    },
-    ["description"] = "Audio playback and synthesizer tools for CEE Speakers",
-    ["files"] = {
-      "/usr/bin/extra/play.lua",
-    },
-    ["groups"] = "multimedia",
-    ["licenses"] = "MIT",
-    ["name"] = "media-tools",
-    ["package_dir"] = "media-tools",
-    ["packager"] = "Luna Build Team",
-    ["path"] = "/usr/bin/extra",
-    ["provides"] = "None",
-    ["repo"] = "extra",
-    ["size"] = 6179,
-    ["url"] = "https://github.com/TheEartHTM/luna",
-    ["version"] = "1.0.0-2",
-  },
-  ["micro"] = {
-    ["architecture"] = "any",
-    ["backup"] = {
-
-    },
-    ["build_date"] = "Sat Nov 21 21:00:00 2026",
-    ["conflicts"] = {
-
-    },
-    ["deps"] = {
-
-    },
-    ["description"] = "Modern and intuitive terminal-based text editor",
-    ["files"] = {
-      "/usr/bin/extra/micro.lua",
-    },
-    ["groups"] = "editors",
-    ["licenses"] = "MIT",
-    ["name"] = "micro",
-    ["package_dir"] = "micro",
-    ["packager"] = "Luna Build Team",
-    ["path"] = "/usr/bin/extra",
-    ["provides"] = "None",
-    ["repo"] = "extra",
-    ["size"] = 27509,
-    ["url"] = "https://micro-editor.github.io/",
-    ["version"] = "2.0.14-1",
-  },
-  ["openssh"] = {
-    ["architecture"] = "any",
-    ["backup"] = {
-      "/etc/conf/sshd.conf",
-    },
-    ["build_date"] = "Sat Nov 21 21:00:00 2026",
-    ["conflicts"] = {
-
-    },
-    ["deps"] = {
-      "iproute2",
-      "shadow",
-    },
-    ["description"] = "OpenSSH remote login server daemon and client for Luna OS (CEE)",
-    ["files"] = {
-      "/usr/bin/extra/ssh.lua",
-      "/usr/bin/extra/sshd.lua",
-    },
-    ["groups"] = "networking",
-    ["licenses"] = "BSD-2-Clause",
-    ["name"] = "openssh",
-    ["package_dir"] = "openssh",
-    ["packager"] = "Luna Build Team",
-    ["path"] = "/usr/bin/extra",
-    ["provides"] = "None",
-    ["repo"] = "extra",
-    ["service"] = {
-      ["desc"] = "OpenSSH server daemon (CEE)",
-      ["name"] = "sshd",
-      ["order"] = 20,
-      ["script"] = "/usr/bin/extra/sshd.lua",
-    },
-    ["size"] = 18005,
-    ["url"] = "https://www.openssh.com/",
-    ["version"] = "9.8-5",
-  },
   ["luaamp"] = {
     ["architecture"] = "any",
     ["backup"] = {
@@ -219,10 +119,8 @@
     },
     ["build_date"] = "Sun Nov 22 19:30:00 2026",
     ["conflicts"] = {
-
     },
     ["deps"] = {
-
     },
     ["description"] = "Feature-rich terminal and multi-monitor audio player for CEE speakers",
     ["files"] = {
@@ -258,8 +156,93 @@
     ["path"] = "/opt/luaamp",
     ["provides"] = "None",
     ["repo"] = "extra",
-    ["size"] = 102581,
+    ["size"] = 103135,
     ["url"] = "https://github.com/artitionoff/LuaAMP",
-    ["version"] = "1.0.0-1",
+    ["version"] = "1.0.0-2",
+  },
+  ["media-tools"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+    },
+    ["deps"] = {
+    },
+    ["description"] = "Audio playback and synthesizer tools for CEE Speakers",
+    ["files"] = {
+      "/usr/bin/extra/play.lua",
+    },
+    ["groups"] = "multimedia",
+    ["licenses"] = "MIT",
+    ["name"] = "media-tools",
+    ["package_dir"] = "media-tools",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["size"] = 6179,
+    ["url"] = "https://github.com/TheEartHTM/luna",
+    ["version"] = "1.0.0-2",
+  },
+  ["micro"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+    },
+    ["deps"] = {
+    },
+    ["description"] = "Modern and intuitive terminal-based text editor",
+    ["files"] = {
+      "/usr/bin/extra/micro.lua",
+    },
+    ["groups"] = "editors",
+    ["licenses"] = "MIT",
+    ["name"] = "micro",
+    ["package_dir"] = "micro",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["size"] = 37728,
+    ["url"] = "https://micro-editor.github.io/",
+    ["version"] = "2.0.14-1",
+  },
+  ["openssh"] = {
+    ["architecture"] = "any",
+    ["backup"] = {
+      "/etc/conf/sshd.conf",
+    },
+    ["build_date"] = "Sat Nov 21 21:00:00 2026",
+    ["conflicts"] = {
+    },
+    ["deps"] = {
+      "iproute2",
+      "shadow",
+    },
+    ["description"] = "OpenSSH remote login server daemon and client for Luna OS (CEE)",
+    ["files"] = {
+      "/usr/bin/extra/ssh.lua",
+      "/usr/bin/extra/sshd.lua",
+    },
+    ["groups"] = "networking",
+    ["licenses"] = "BSD-2-Clause",
+    ["name"] = "openssh",
+    ["package_dir"] = "openssh",
+    ["packager"] = "Luna Build Team",
+    ["path"] = "/usr/bin/extra",
+    ["provides"] = "None",
+    ["repo"] = "extra",
+    ["service"] = {
+      ["script"] = "/usr/bin/extra/sshd.lua",
+      ["order"] = 20,
+      ["name"] = "sshd",
+      ["desc"] = "OpenSSH server daemon (CEE)",
+    },
+    ["size"] = 18005,
+    ["url"] = "https://www.openssh.com/",
+    ["version"] = "9.8-5",
   },
 }
