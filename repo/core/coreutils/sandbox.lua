@@ -314,11 +314,14 @@ function sandbox.create(opts)
     -- 9. Shell Environment (always provided so child commands/scripts run in sandbox)
     if not opts.no_shell then
         local sShell = {}
-        if shell then
-            for k, v in pairs(shell) do sShell[k] = v end
+        local srcShell = opts.shell or shell or _G.shell
+        if srcShell then
+            for k, v in pairs(srcShell) do sShell[k] = v end
         end
-        sShell.dir = (shell and shell.dir) or function() return "" end
-        sShell.resolve = (shell and shell.resolve) or function(p) return p end
+        sShell.dir = (srcShell and srcShell.dir) or function() return "" end
+        sShell.setDir = (srcShell and srcShell.setDir) or function(d) return true end
+        sShell.resolve = (srcShell and srcShell.resolve) or function(p) return p end
+        sShell.path = (srcShell and srcShell.path) or function() return "/usr/bin/core:/usr/bin/extra:/usr/bin:/etc" end
         -- Wrap shell.run and shell.execute to run in child sandbox
         sShell.run = function(prog, ...)
             local ok, code = sandbox.run(prog, { ... }, opts)

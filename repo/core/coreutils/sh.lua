@@ -475,9 +475,9 @@ local function createInterpreter(customEnv, parentFunctions)
                     else
                         local curUser = (self.env and self.env.USER) or _G.CURRENT_USER or "root"
                         local name = fs.getName(full):gsub("%.lua$", "")
-                        local isSetuid = (name == "sudo" or name == "su" or name == "passwd")
+                        local isDirect = (name == "cd" or name == "exit" or name == "sudo" or name == "su" or name == "passwd" or name == "chvt" or name == "focus")
 
-                        if curUser ~= "root" and not isSetuid then
+                        if curUser ~= "root" and not isDirect then
                             local sEngine = _G.sandbox
                             if not sEngine and fs.exists("/usr/bin/core/sandbox.lua") then
                                 local sFn = loadfile("/usr/bin/core/sandbox.lua")
@@ -490,7 +490,7 @@ local function createInterpreter(customEnv, parentFunctions)
                                 end
                             end
                             if sEngine and sEngine.run then
-                                local sOk, sCode = sEngine.run(full, args, { profile = "user", user = curUser })
+                                local sOk, sCode = sEngine.run(full, args, { profile = "user", user = curUser, shell = shell })
                                 exitCode = sCode or (sOk and 0 or 1)
                             else
                                 local ok = shell and shell.run and shell.run(full, table.unpack(args))

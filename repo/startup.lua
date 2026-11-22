@@ -1755,13 +1755,13 @@ local function executeCommandWithRedirection(cmdWords, pipeInput)
     local okExec, errExec = pcall(function()
         local curUser = _G.CURRENT_USER or "root"
         local name = fs.getName(prog):gsub("%.lua$", "")
-        local isSetuid = (name == "sudo" or name == "su" or name == "passwd")
+        local isDirect = (name == "cd" or name == "exit" or name == "sudo" or name == "su" or name == "passwd" or name == "chvt" or name == "focus")
 
-        if curUser ~= "root" and not isSetuid and _G.sandbox and _G.sandbox.run then
+        if curUser ~= "root" and not isDirect and _G.sandbox and _G.sandbox.run then
             if prog:sub(-3) == ".sh" then
-                _G.sandbox.run("/usr/bin/core/sh", { prog, table.unpack(expandedArgs) }, { profile = "user", user = curUser })
+                _G.sandbox.run("/usr/bin/core/sh", { prog, table.unpack(expandedArgs) }, { profile = "user", user = curUser, shell = shell })
             else
-                _G.sandbox.run(prog, expandedArgs, { profile = "user", user = curUser })
+                _G.sandbox.run(prog, expandedArgs, { profile = "user", user = curUser, shell = shell })
             end
         else
             if prog:sub(-3) == ".sh" then
