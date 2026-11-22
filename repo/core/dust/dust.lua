@@ -1009,7 +1009,7 @@ elseif op == "S" then
     local repoUrl = conf.repo_url or "https://raw.githubusercontent.com/TheEartHTM/luna/main/repo"
     if flags["local"] then
         repoUrl = HARDCODED_LOCAL_REPO_URL
-        printOk("Using local development repository: " .. repoUrl)
+        printSection("Using local development repository: " .. repoUrl)
     end
     local host = repoUrl:match("https?://([^/]+)") or "repo"
     local syncDB = loadSyncDB()

@@ -115,6 +115,16 @@ end
 
 local function buildTargets()
     destroyTargets()
+    local cur = term.current()
+    local isRedirected = (term.native and cur ~= term.native()) or false
+
+    -- If launched with terminal redirected to a specific monitor (e.g. > /dev/mon2), target ONLY that monitor
+    if isRedirected then
+        local pName = peripheral.getName and peripheral.getName(cur)
+        targets[1] = makeTarget(cur, "term", pName)
+        return
+    end
+
     if USE_TERMINAL then
         targets[#targets + 1] = makeTarget(term.current(), "term")
     end
@@ -181,6 +191,10 @@ end
 local function targetByKind(kind, name)
     for _, t in ipairs(targets) do
         if t.kind == kind and (name == nil or t.name == name) then return t end
+        if kind == "monitor" and t.name == name then return t end
+    end
+    if kind == "monitor" and #targets == 1 and targets[1].name then
+        return targets[1]
     end
 end
 

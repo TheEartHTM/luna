@@ -1,8 +1,8 @@
 -- sh.lua - POSIX / Bash Compatible Shell Script Engine for Luna OS
--- Supports: variables ($VAR, ${VAR}), $?, $#, $0..$9, $(cmd), `cmd`,
---           pipes (|), redirections (>, >>, <),
+-- Supports: variables ($VAR, ${VAR}), arithmetic ($((expr))), $?, $#, $0..$9, $(cmd), `cmd`,
+--           pipes (|), redirections (>, >>, <), functions (name() { ... }),
 --           if/then/elif/else/fi, for/in/do/done, while/do/done,
---           test / [ conditions, built-ins, and external command execution.
+--           test / [ conditions with !, &&, ||, built-ins, and external command execution.
 
 local term = term
 local colors = colors
@@ -12,7 +12,7 @@ local function trim(s)
     return s:match("^%s*(.-)%s*$") or ""
 end
 
--- Test condition evaluator ([ ... ] or test ...)
+-- Safely evaluate unary and binary tests in [ ... ] or test ...
 local function evaluateTest(args, env)
     local cleanArgs = {}
     for _, a in ipairs(args) do
@@ -21,15 +21,25 @@ local function evaluateTest(args, env)
 
     if #cleanArgs == 0 then return false end
 
+    -- Unary negation: ! <test>
+    if cleanArgs[1] == "!" then
+        local subArgs = {}
+        for i = 2, #cleanArgs do table.insert(subArgs, cleanArgs[i]) end
+        return not evaluateTest(subArgs, env)
+    end
+
     -- Unary tests: -f, -d, -e, -z, -n
     if cleanArgs[1] == "-f" then
         local p = cleanArgs[2] or ""
+        if shell and shell.resolve then p = shell.resolve(p) end
         return fs.exists(p) and not fs.isDir(p)
     elseif cleanArgs[1] == "-d" then
         local p = cleanArgs[2] or ""
+        if shell and shell.resolve then p = shell.resolve(p) end
         return fs.exists(p) and fs.isDir(p)
     elseif cleanArgs[1] == "-e" then
         local p = cleanArgs[2] or ""
+        if shell and shell.resolve then p = shell.resolve(p) end
         return fs.exists(p)
     elseif cleanArgs[1] == "-z" then
         local s = cleanArgs[2] or ""
@@ -102,28 +112,78 @@ local function tokenize(line)
     return tokens
 end
 
+-- Redirection splitter that respects single and double quotes
+local function splitRedirection(str)
+    local inSingle = false
+    local inDouble = false
+    local len = #str
+    local i = 1
+    while i <= len do
+        local c = str:sub(i, i)
+        if c == "'" and not inDouble then
+            inSingle = not inSingle
+        elseif c == '"' and not inSingle then
+            inDouble = not inDouble
+        elseif not inSingle and not inDouble then
+            if c == ">" then
+                if str:sub(i + 1, i + 1) == ">" then
+                    local pre = trim(str:sub(1, i - 1))
+                    local post = trim(str:sub(i + 2))
+                    return pre, post, true
+                else
+                    local pre = trim(str:sub(1, i - 1))
+                    local post = trim(str:sub(i + 1))
+                    return pre, post, false
+                end
+            end
+        end
+        i = i + 1
+    end
+    return str, nil, false
+end
+
 -- Create Interpreter Instance
-local function createInterpreter(customEnv)
+local function createInterpreter(customEnv, parentFunctions)
     local interp = {
         env = {
             HOME = (_G.kernel and _G.kernel.getHome and _G.kernel.getHome()) or "/root",
             USER = _G.CURRENT_USER or "root",
-            HOSTNAME = (_G.kernel and _G.kernel.getHostname and _G.kernel.getHostname()) or "luna",
+            HOSTNAME = (_G.kernel and _G.kernel.getHostname and _G.kernel.getHostname()) or (_G.SYSTEM_NAME or "luna"),
             PWD = (_G.shell and _G.shell.dir and ("/" .. _G.shell.dir())) or "/",
             PATH = "/usr/bin/core:/usr/bin/extra:/usr/bin:/etc",
             SHLVL = "1"
         },
+        functions = {},
         lastExitCode = 0,
         scriptArgs = {},
         shouldExit = false
     }
 
+    if parentFunctions then
+        for k, v in pairs(parentFunctions) do interp.functions[k] = v end
+    end
+
     if customEnv then
         for k, v in pairs(customEnv) do interp.env[k] = tostring(v) end
     end
 
-    -- Variable & Substitution Expander
+    -- Variable & Arithmetic Expander
     function interp:expand(line)
+        -- 0. Arithmetic expansion: $(( expr ))
+        line = line:gsub("%$%(%((.-)%)%)", function(expr)
+            local cleanExpr = expr:gsub("([%w_]+)", function(var)
+                local v = self.env[var] or _G[var]
+                if v and tonumber(v) then return tostring(v) end
+                return var
+            end)
+            local fn = load("return math.floor(" .. cleanExpr .. ")", "expr", "t", { math = math })
+            if fn then
+                local ok, res = pcall(fn)
+                if ok and type(res) == "number" then return tostring(res) end
+            end
+            return "0"
+        end)
+
         -- 1. Command substitution: $(cmd) or `cmd`
         line = line:gsub("%$%(%s*(.-)%s*%)", function(subCmd)
             local out = self:executeCapture(subCmd)
@@ -140,12 +200,12 @@ local function createInterpreter(customEnv)
         end)
 
         -- 3. Special Variables: $?, $#, $*, $@, $0..$9
-        line = line:gsub("%$%?", tostring(self.lastExitCode))
-        line = line:gsub("%$%#", tostring(#self.scriptArgs))
-        line = line:gsub("%$[%*@]", table.concat(self.scriptArgs, " "))
+        line = line:gsub("%$%?", function() return tostring(self.lastExitCode) end)
+        line = line:gsub("%$%#", function() return tostring(#self.scriptArgs) end)
+        line = line:gsub("%$[%*@]", function() return table.concat(self.scriptArgs, " ") end)
         for i = 0, 9 do
             local val = (i == 0) and (self.scriptName or "sh") or (self.scriptArgs[i] or "")
-            line = line:gsub("%$" .. i, val)
+            line = line:gsub("%$" .. i, function() return val end)
         end
 
         -- 4. Normal Variables: $VAR
@@ -154,6 +214,34 @@ local function createInterpreter(customEnv)
         end)
 
         return line
+    end
+
+    -- Condition Evaluator with &&, ||, and [ ... ]
+    function interp:evaluateCondition(condStr)
+        condStr = trim(condStr)
+        if condStr:find("||") then
+            local pre, post = condStr:match("^(.-)%s*||%s*(.*)$")
+            if pre and post then
+                return self:evaluateCondition(pre) or self:evaluateCondition(post)
+            end
+        end
+        if condStr:find("&&") then
+            local pre, post = condStr:match("^(.-)%s*&&%s*(.*)$")
+            if pre and post then
+                return self:evaluateCondition(pre) and self:evaluateCondition(post)
+            end
+        end
+
+        local condExp = self:expand(condStr)
+        local cToks = tokenize(condExp)
+        if #cToks == 0 then return false end
+        if cToks[1] == "[" or cToks[1] == "test" then
+            table.remove(cToks, 1)
+            return evaluateTest(cToks, self.env)
+        else
+            local _, code = self:executeCommandString(condStr, nil, true)
+            return code == 0
+        end
     end
 
     -- Execute a pipeline (handles pipes | and redirections)
@@ -179,23 +267,34 @@ local function createInterpreter(customEnv)
 
     -- Execute one command with optional input string and output capture
     function interp:executeCommandString(cmdStr, pipeInput, captureOutputRequired)
-        -- Check for output redirection (> or >>)
+        -- Check for output redirection (> or >>) respecting quotes
+        local cleanCmd, rawRedir, isAppend = splitRedirection(cmdStr)
         local redirFile = nil
-        local redirAppend = false
+        local redirAppend = isAppend
+        local isDevTerm = false
+        local devTermObj = nil
 
-        if cmdStr:find(">>") then
-            local pre, post = cmdStr:match("^(.-)>>%s*(.-)$")
-            if pre and post then
-                cmdStr = trim(pre)
-                redirFile = trim(post)
-                redirAppend = true
+        if rawRedir then
+            cmdStr = cleanCmd
+            local expTarget = self:expand(rawRedir)
+            if (expTarget:sub(1, 1) == '"' and expTarget:sub(-1) == '"') or (expTarget:sub(1, 1) == "'" and expTarget:sub(-1) == "'") then
+                expTarget = expTarget:sub(2, -2)
             end
-        elseif cmdStr:find(">") then
-            local pre, post = cmdStr:match("^(.-)>%s*(.-)$")
-            if pre and post then
-                cmdStr = trim(pre)
-                redirFile = trim(post)
-                redirAppend = false
+            redirFile = trim(expTarget)
+            local rawDev = redirFile
+            if rawDev:sub(1, 5) == "/dev/" then rawDev = rawDev:sub(6) end
+            if _G._DEVICE_MONITORS then
+                devTermObj = _G._DEVICE_MONITORS[redirFile] or _G._DEVICE_MONITORS[rawDev]
+            end
+            if not devTermObj and rawDev:match("^mon%d+$") then
+                local idx = rawDev:match("%d+$")
+                devTermObj = _G._DEVICE_MONITORS and (_G._DEVICE_MONITORS["mon" .. idx] or _G._DEVICE_MONITORS["/dev/mon" .. idx])
+            end
+            if devTermObj then
+                isDevTerm = true
+                redirFile = nil
+            elseif shell and shell.resolve then
+                redirFile = shell.resolve(redirFile)
             end
         end
 
@@ -221,9 +320,16 @@ local function createInterpreter(customEnv)
 
         local outputBuffer = {}
         local oldTerm = (term and term.current and term.current()) or nil
-        local needsCapture = captureOutputRequired or redirFile ~= nil
+        local needsCapture = captureOutputRequired or (redirFile ~= nil)
 
-        if needsCapture and term and term.redirect then
+        if isDevTerm and devTermObj and term and term.redirect then
+            oldTerm = term.current()
+            term.redirect(devTermObj)
+            if not redirAppend then
+                pcall(devTermObj.clear)
+                pcall(devTermObj.setCursorPos, 1, 1)
+            end
+        elseif needsCapture and term and term.redirect then
             local captureTerm = {
                 write = function(s) table.insert(outputBuffer, tostring(s)) end,
                 blit = function(t, f, b) table.insert(outputBuffer, tostring(t)) end,
@@ -255,8 +361,16 @@ local function createInterpreter(customEnv)
 
         local exitCode = 0
 
+        -- 0. Shell Defined Function
+        if self.functions and self.functions[cmd] then
+            local savedArgs = self.scriptArgs
+            self.scriptArgs = args
+            self:executeStatements(self.functions[cmd])
+            exitCode = self.lastExitCode or 0
+            self.scriptArgs = savedArgs
+
         -- 1. Built-in: echo
-        if cmd == "echo" then
+        elseif cmd == "echo" then
             local echoStr = table.concat(args, " ")
             if needsCapture then
                 table.insert(outputBuffer, echoStr .. "\n")
@@ -273,10 +387,9 @@ local function createInterpreter(customEnv)
 
         -- 3. Built-in: export
         elseif cmd == "export" then
-            if args[1] then
-                local k, v = args[1]:match("^([%w_]+)=(.*)$")
-                if k then self.env[k] = v or "" end
-            end
+            local assign = args[1] or ""
+            local k, v = assign:match("^([%w_]+)=(.*)$")
+            if k then self.env[k] = v or "" end
             exitCode = 0
 
         -- 4. Built-in: read
@@ -324,26 +437,40 @@ local function createInterpreter(customEnv)
         -- 10. External program execution
         else
             local found = false
-            local pathList = {}
-            for p in (self.env.PATH or ""):gmatch("[^:]+") do table.insert(pathList, p) end
-            table.insert(pathList, "")
+            local searchPaths = {}
 
-            for _, prefix in ipairs(pathList) do
-                local candidate = (prefix == "") and cmd or (prefix .. "/" .. cmd)
-                local full = candidate
-                if not fs.exists(full) and fs.exists(full .. ".lua") then full = full .. ".lua" end
-                if not fs.exists(full) and fs.exists(full .. ".sh") then full = full .. ".sh" end
+            if cmd:find("/") then
+                local resolved = (shell and shell.resolve and shell.resolve(cmd)) or cmd
+                table.insert(searchPaths, resolved)
+                if not resolved:sub(-4) == ".lua" then
+                    table.insert(searchPaths, resolved .. ".lua")
+                end
+            else
+                local pathList = {}
+                for p in (self.env.PATH or ""):gmatch("[^:]+") do table.insert(pathList, p) end
+                table.insert(pathList, "/usr/bin/core")
+                table.insert(pathList, "/usr/bin/extra")
+                table.insert(pathList, "/usr/bin")
+                table.insert(pathList, "/etc")
 
+                for _, p in ipairs(pathList) do
+                    table.insert(searchPaths, fs.combine(p, cmd))
+                    table.insert(searchPaths, fs.combine(p, cmd .. ".lua"))
+                end
+            end
+
+            for _, full in ipairs(searchPaths) do
                 if fs.exists(full) and not fs.isDir(full) then
                     found = true
-                    -- Check if it's a shell script
                     if full:sub(-3) == ".sh" then
+                        local subInterp = createInterpreter(self.env, self.functions)
                         local h = fs.open(full, "r")
                         if h then
-                            local shText = h.readAll()
+                            local sText = h.readAll()
                             h.close()
-                            local subInterp = createInterpreter(self.env)
-                            exitCode = subInterp:runScript(shText, args, full)
+                            exitCode = subInterp:runScript(sText, args, full)
+                        else
+                            exitCode = 127
                         end
                     else
                         if shell and shell.run then
@@ -355,7 +482,8 @@ local function createInterpreter(customEnv)
                                 local ok, res = pcall(fn, table.unpack(args))
                                 exitCode = ok and 0 or 1
                             else
-                                print("sh: syntax error in " .. full .. ": " .. tostring(err))
+                                if oldTerm then pcall(term.redirect, oldTerm) end
+                                printError("sh: syntax error in " .. full .. ": " .. tostring(err))
                                 exitCode = 127
                             end
                         end
@@ -365,12 +493,15 @@ local function createInterpreter(customEnv)
             end
 
             if not found then
-                print("sh: " .. cmd .. ": command not found")
+                if oldTerm then pcall(term.redirect, oldTerm) end
+                printError("sh: " .. cmd .. ": command not found")
                 exitCode = 127
             end
         end
 
-        if needsCapture and term and term.redirect and oldTerm then
+        if isDevTerm and oldTerm and term and term.redirect then
+            term.redirect(oldTerm)
+        elseif needsCapture and term and term.redirect and oldTerm then
             term.redirect(oldTerm)
         end
 
@@ -378,19 +509,24 @@ local function createInterpreter(customEnv)
 
         -- Write captured output to file if redirected
         if redirFile and redirFile ~= "" then
-            local mode = redirAppend and "a" or "w"
-            local parent = fs.getDir(redirFile)
-            if parent ~= "" and not fs.exists(parent) then pcall(fs.makeDir, parent) end
-            local h = fs.open(redirFile, mode)
-            if h then
-                h.write(capturedText)
-                h.close()
+            if redirFile == "/dev/null" or redirFile == "dev/null" then
+                -- discarded quietly
             else
-                print("sh: cannot write to " .. redirFile)
-                exitCode = 1
+                local mode = redirAppend and "a" or "w"
+                local parent = fs.getDir(redirFile)
+                if parent ~= "" and not fs.exists(parent) then pcall(fs.makeDir, parent) end
+                local h = fs.open(redirFile, mode)
+                if h then
+                    h.write(capturedText)
+                    h.close()
+                else
+                    printError("sh: cannot write to " .. redirFile)
+                    exitCode = 1
+                end
             end
         end
 
+        self.lastExitCode = exitCode
         return capturedText, exitCode
     end
 
@@ -399,7 +535,64 @@ local function createInterpreter(customEnv)
         return out or ""
     end
 
-    -- Run multi-line script
+    -- Run multi-line script or statement block
+    function interp:executeStatements(stmts)
+        for _, s in ipairs(stmts) do
+            if self.shouldExit then break end
+
+            if s.type == "cmd" then
+                self:executePipeline(s.line)
+            elseif s.type == "func" then
+                self.functions[s.name] = s.block
+            elseif s.type == "if" then
+                local ok = self:evaluateCondition(s.cond)
+                if ok then
+                    self:executeStatements(s.thenBlock)
+                else
+                    local elifMatched = false
+                    for _, eb in ipairs(s.elifBlocks or {}) do
+                        if self:evaluateCondition(eb.cond) then
+                            self:executeStatements(eb.block)
+                            elifMatched = true
+                            break
+                        end
+                    end
+                    if not elifMatched and s.elseBlock then
+                        self:executeStatements(s.elseBlock)
+                    end
+                end
+            elseif s.type == "for" then
+                local expandedItems = self:expand(s.items or "")
+                local itemTokens = tokenize(expandedItems)
+                local finalItems = {}
+                for _, it in ipairs(itemTokens) do
+                    if it:find("%*") then
+                        local dir = fs.getDir(it)
+                        if dir == "" then dir = "." end
+                        if fs.exists(dir) and fs.isDir(dir) then
+                            for _, fn in ipairs(fs.list(dir)) do
+                                table.insert(finalItems, (dir == ".") and fn or (dir .. "/" .. fn))
+                            end
+                        end
+                    else
+                        table.insert(finalItems, it)
+                    end
+                end
+
+                for _, val in ipairs(finalItems) do
+                    if self.shouldExit then break end
+                    self.env[s.var] = val
+                    self:executeStatements(s.block)
+                end
+            elseif s.type == "while" then
+                while not self.shouldExit do
+                    if not self:evaluateCondition(s.cond) then break end
+                    self:executeStatements(s.block)
+                end
+            end
+        end
+    end
+
     function interp:runScript(scriptText, args, scriptName)
         self.scriptArgs = args or {}
         self.scriptName = scriptName or "sh"
@@ -419,7 +612,7 @@ local function createInterpreter(customEnv)
                 lineIdx = lineIdx + 1
 
                 if l == "" or l:sub(1, 1) == "#" then
-                    -- skip comments and empty lines
+                    -- skip comments and blank lines
                 else
                     for _, kw in ipairs(endKeywords) do
                         if l == kw or l:match("^" .. kw .. "%f[%s;]") then
@@ -427,7 +620,22 @@ local function createInterpreter(customEnv)
                         end
                     end
 
-                    if l:match("^if%s+") or l:match("^if%[") then
+                    -- Function declaration: name() { ... } or function name() { ... } or function name { ... }
+                    local fName = l:match("^([%w_%-]+)%s*%(%s*%)%s*{?$")
+                        or l:match("^function%s+([%w_%-]+)%s*%(?%s*%)?%s*{?$")
+
+                    if fName then
+                        if not l:find("{") and lineIdx <= totalLines and trim(rawLines[lineIdx]) == "{" then
+                            lineIdx = lineIdx + 1
+                        end
+                        local fBlock, _ = parseBlock({ "}" })
+                        table.insert(statements, {
+                            type = "func",
+                            name = fName,
+                            block = fBlock
+                        })
+
+                    elseif l:match("^if%s+") or l:match("^if%[") then
                         local condStr = l:match("^if%s+(.-)%s*;?%s*then?$") or l:match("^if%s+(.*)$")
                         if not l:find("then") then
                             if lineIdx <= totalLines and trim(rawLines[lineIdx]) == "then" then
@@ -501,93 +709,7 @@ local function createInterpreter(customEnv)
         end
 
         local rootStatements, _ = parseBlock({})
-
-        local function executeStatements(stmts)
-            for _, s in ipairs(stmts) do
-                if self.shouldExit then break end
-
-                if s.type == "cmd" then
-                    self:executePipeline(s.line)
-                elseif s.type == "if" then
-                    local condExpanded = self:expand(s.cond)
-                    local condTokens = tokenize(condExpanded)
-                    local ok = false
-                    if condTokens[1] == "[" or condTokens[1] == "test" then
-                        table.remove(condTokens, 1)
-                        ok = evaluateTest(condTokens, self.env)
-                    else
-                        local _, code = self:executeCommandString(s.cond, nil, true)
-                        ok = (code == 0)
-                    end
-
-                    if ok then
-                        executeStatements(s.thenBlock)
-                    else
-                        local elifMatched = false
-                        for _, eb in ipairs(s.elifBlocks or {}) do
-                            local eExp = self:expand(eb.cond)
-                            local eToks = tokenize(eExp)
-                            local eOk = false
-                            if eToks[1] == "[" or eToks[1] == "test" then
-                                table.remove(eToks, 1)
-                                eOk = evaluateTest(eToks, self.env)
-                            else
-                                local _, code = self:executeCommandString(eb.cond, nil, true)
-                                eOk = (code == 0)
-                            end
-                            if eOk then
-                                executeStatements(eb.block)
-                                elifMatched = true
-                                break
-                            end
-                        end
-                        if not elifMatched and s.elseBlock then
-                            executeStatements(s.elseBlock)
-                        end
-                    end
-                elseif s.type == "for" then
-                    local expandedItems = self:expand(s.items or "")
-                    local itemTokens = tokenize(expandedItems)
-                    local finalItems = {}
-                    for _, it in ipairs(itemTokens) do
-                        if it:find("%*") then
-                            local dir = fs.getDir(it)
-                            if dir == "" then dir = "." end
-                            if fs.exists(dir) and fs.isDir(dir) then
-                                for _, fn in ipairs(fs.list(dir)) do
-                                    table.insert(finalItems, (dir == ".") and fn or (dir .. "/" .. fn))
-                                end
-                            end
-                        else
-                            table.insert(finalItems, it)
-                        end
-                    end
-
-                    for _, val in ipairs(finalItems) do
-                        if self.shouldExit then break end
-                        self.env[s.var] = val
-                        executeStatements(s.block)
-                    end
-                elseif s.type == "while" then
-                    while not self.shouldExit do
-                        local condExp = self:expand(s.cond)
-                        local cToks = tokenize(condExp)
-                        local ok = false
-                        if cToks[1] == "[" or cToks[1] == "test" then
-                            table.remove(cToks, 1)
-                            ok = evaluateTest(cToks, self.env)
-                        else
-                            local _, code = self:executeCommandString(s.cond, nil, true)
-                            ok = (code == 0)
-                        end
-                        if not ok then break end
-                        executeStatements(s.block)
-                    end
-                end
-            end
-        end
-
-        executeStatements(rootStatements)
+        self:executeStatements(rootStatements)
         return self.lastExitCode
     end
 
@@ -617,14 +739,19 @@ elseif args[1] == "-c" then
     interp:runScript(cmdText, { table.unpack(args, 3) }, "sh")
 else
     -- Script file mode
-    local scriptFile = args[1]
+    local rawScript = args[1]
+    local scriptFile = (shell and shell.resolve and shell.resolve(rawScript)) or rawScript
+    if not fs.exists(scriptFile) and shell and shell.dir then
+        local combined = fs.combine(shell.dir(), rawScript)
+        if fs.exists(combined) then scriptFile = combined end
+    end
     if not fs.exists(scriptFile) then
-        print("sh: " .. scriptFile .. ": No such file or directory")
+        printError("sh: " .. rawScript .. ": No such file or directory")
         return
     end
     local h = fs.open(scriptFile, "r")
     if not h then
-        print("sh: " .. scriptFile .. ": Permission denied or unreadable")
+        printError("sh: " .. rawScript .. ": Permission denied or unreadable")
         return
     end
     local scriptText = h.readAll()
@@ -633,5 +760,5 @@ else
     local interp = createInterpreter()
     local scriptArgs = {}
     for i = 2, #args do table.insert(scriptArgs, args[i]) end
-    interp:runScript(scriptText, scriptArgs, scriptFile)
+    interp:runScript(scriptText, scriptArgs, rawScript)
 end

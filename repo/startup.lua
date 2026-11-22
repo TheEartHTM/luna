@@ -1670,23 +1670,47 @@ local function executeCommandWithRedirection(cmdWords, pipeInput)
     local oldTerm = nil
     local oldIoOutput = nil
     local oldIoInput = nil
+    local isDevTerm = false
 
     -- Output redirection (>, >>)
     if redirOut then
-        local resolvedTarget = shell.resolve(redirOut)
-        local mode = redirAppend and "ab" or "wb"
-        local h, err = fs.open(resolvedTarget, mode)
-        if not h then
-            printError("luna: " .. redirOut .. ": " .. tostring(err or "Permission denied"))
-            return false
+        local rawDev = redirOut
+        if rawDev:sub(1, 5) == "/dev/" then rawDev = rawDev:sub(6) end
+        local monObj = nil
+        if _G._DEVICE_MONITORS then
+            monObj = _G._DEVICE_MONITORS[redirOut] or _G._DEVICE_MONITORS[rawDev]
         end
-        outHandle = h
-        oldTerm = term.current()
-        local fTerm = makeFileTerm(outHandle, oldTerm)
-        term.redirect(fTerm)
-        if io and io.output then
-            oldIoOutput = io.output()
-            pcall(io.output, outHandle)
+        if not monObj and rawDev:match("^mon%d+$") then
+            local idx = rawDev:match("%d+$")
+            monObj = _G._DEVICE_MONITORS and (_G._DEVICE_MONITORS["mon" .. idx] or _G._DEVICE_MONITORS["/dev/mon" .. idx])
+        end
+
+        if monObj then
+            -- Live hardware monitor redirection: full TUI/GUI and text output supported directly
+            oldTerm = term.current()
+            isDevTerm = true
+            coroTerms[coroutine.running()] = monObj
+            term.redirect(monObj)
+            if not redirAppend then
+                pcall(monObj.clear)
+                pcall(monObj.setCursorPos, 1, 1)
+            end
+        else
+            local resolvedTarget = shell.resolve(redirOut)
+            local mode = redirAppend and "ab" or "wb"
+            local h, err = fs.open(resolvedTarget, mode)
+            if not h then
+                printError("luna: " .. redirOut .. ": " .. tostring(err or "Permission denied"))
+                return false
+            end
+            outHandle = h
+            oldTerm = term.current()
+            local fTerm = makeFileTerm(outHandle, oldTerm)
+            term.redirect(fTerm)
+            if io and io.output then
+                oldIoOutput = io.output()
+                pcall(io.output, outHandle)
+            end
         end
     end
 
@@ -1735,6 +1759,9 @@ local function executeCommandWithRedirection(cmdWords, pipeInput)
         if oldTerm then pcall(term.redirect, oldTerm) end
         if oldIoOutput and io and io.output then pcall(io.output, oldIoOutput) end
         pcall(outHandle.close)
+    elseif isDevTerm and oldTerm then
+        pcall(term.redirect, oldTerm)
+        coroTerms[coroutine.running()] = oldTerm
     end
 
     if not okExec then

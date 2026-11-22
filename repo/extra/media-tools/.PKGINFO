@@ -1,6 +1,6 @@
 # Generated for Luna OS
 pkgname = media-tools
-pkgver = 1.0.0-1
+pkgver = 1.0.0-2
 pkgdesc = Audio playback and synthesizer tools for CEE Speakers
 repo = extra
 path = /usr/bin/extra

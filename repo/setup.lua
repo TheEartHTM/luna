@@ -493,11 +493,12 @@ local sysLuaContent = string.format([[-- /etc/conf/system.lua
 -- 1. Modular Config Sourcing
 -- source("/etc/conf/monitors.lua")
 
--- 2. Display & Multi-Monitor Configuration
--- All monitors mirror console output with individual text scaling.
--- Any specific monitor can be targeted directly via shell redirection: cmd > /dev/mon1
+-- 2. Multi-Monitor & Workspace Configuration
+-- Supports N >= 1 monitors with independent resolution calculation.
+-- Target specific monitor via redirection: cmd > /dev/mon1 (or > /dev/left)
+-- Switch keyboard focus between monitors: focus /dev/mon1 (or focus left)
 monitors = {
-    -- Example multi-monitor setup (supports any number of monitors):
+    -- Example multi-monitor setup (supports any number of monitors N >= 1):
     -- { name = "main",  dev = "/dev/terminal", scale = 1.0 },
     -- { name = "left",  dev = "/dev/mon1",     scale = 0.5 },
     -- { name = "right", dev = "/dev/mon2",     scale = 0.5 },
