@@ -1,6 +1,6 @@
 # Generated for Luna OS
 pkgname = coreutils
-pkgver = 9.5-7
+pkgver = 9.5-8
 pkgdesc = Core GNU/POSIX file, shell, and text manipulation utilities
 repo = core
 path = /usr/bin/core

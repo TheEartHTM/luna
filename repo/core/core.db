@@ -48,7 +48,7 @@
     ["repo"] = "core",
     ["size"] = 118502,
     ["url"] = "https://github.com/TheEartHTM/luna",
-    ["version"] = "9.5-7",
+    ["version"] = "9.5-8",
   },
   ["dust"] = {
     ["architecture"] = "any",
@@ -200,7 +200,7 @@
     ["repo"] = "core",
     ["size"] = 130883,
     ["url"] = "https://github.com/TheEartHTM/luna",
-    ["version"] = "256.4-12",
+    ["version"] = "256.4-13",
   },
   ["util-linux"] = {
     ["architecture"] = "any",

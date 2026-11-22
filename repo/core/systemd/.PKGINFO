@@ -1,6 +1,6 @@
 # Generated for Luna OS
 pkgname = systemd
-pkgver = 256.4-12
+pkgver = 256.4-13
 pkgdesc = System and Service Manager, init scripts, and power management
 repo = core
 path = /usr/bin/core
