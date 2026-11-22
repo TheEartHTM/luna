@@ -716,6 +716,7 @@ for _, arg in ipairs(args) do
         elseif name == "recursive" then flags["s"] = true
         elseif name == "needed" then flags["needed"] = true
         elseif name == "reinstall" or name == "force" then flags["f"] = true
+        elseif name == "local" or name == "lan" or name == "dev" then flags["local"] = true
         elseif name == "help" then flags["h"] = true
         end
     elseif arg:sub(1, 1) == "-" and #arg > 1 then
@@ -723,6 +724,8 @@ for _, arg in ipairs(args) do
             local c = arg:sub(i, i)
             if c == "S" or c == "R" or c == "Q" then
                 op = c
+            elseif c == "L" then
+                flags["local"] = true
             else
                 flags[c] = true
             end
@@ -747,6 +750,7 @@ if flags["h"] or not op then
     print("    -d, --deps          list dependency packages (-Q)")
     print("    -y, --refresh       download fresh database from GitHub (-S)")
     print("    -u, --sysupgrade    upgrade installed packages (-S)")
+    print("    -L, --local         download from local dev repository (192.168.0.109:8080) (-S)")
     print("    -s, --recursive     remove package and dependencies (-R)")
     return
 end
@@ -818,6 +822,10 @@ end
 
 local db = loadDB()
 local conf = loadConf()
+local HARDCODED_LOCAL_REPO_URL = "http://192.168.0.109:8080"
+if flags["local"] then
+    conf.repo_url = HARDCODED_LOCAL_REPO_URL
+end
 local curUser = _G.CURRENT_USER or "root"
 
 --------------------------------------------------------------------------------
@@ -991,6 +999,10 @@ if op == "Q" then
 --------------------------------------------------------------------------------
 elseif op == "S" then
     local repoUrl = conf.repo_url or "https://raw.githubusercontent.com/TheEartHTM/luna/main/repo"
+    if flags["local"] then
+        repoUrl = HARDCODED_LOCAL_REPO_URL
+        printOk("Using local development repository: " .. repoUrl)
+    end
     local host = repoUrl:match("https?://([^/]+)") or "repo"
     local syncDB = loadSyncDB()
 
