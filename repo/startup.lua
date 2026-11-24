@@ -101,6 +101,39 @@ local function calcScale(blocks, wBlocks, hBlocks)
     end
 end
 
+local SIDE_ORDER = {
+    bottom = 1,
+    top    = 2,
+    back   = 3,
+    front  = 4,
+    right  = 5,
+    left   = 6,
+}
+
+local function getSortedPeripheralNames()
+    if not peripheral or not peripheral.getNames then return {} end
+    local list = peripheral.getNames()
+    table.sort(list, function(a, b)
+        local oA = SIDE_ORDER[a]
+        local oB = SIDE_ORDER[b]
+        if oA and oB then
+            return oA < oB
+        elseif oA then
+            return true
+        elseif oB then
+            return false
+        end
+        local prefixA, numA = a:match("^(.-)_(%d+)$")
+        local prefixB, numB = b:match("^(.-)_(%d+)$")
+        if prefixA and prefixB and prefixA == prefixB then
+            local nA, nB = tonumber(numA), tonumber(numB)
+            if nA ~= nB then return nA < nB end
+        end
+        return a < b
+    end)
+    return list
+end
+
 local function resolveDev(devName)
     if not devName then
         return term.native and term.native() or term.current(), "terminal", false
@@ -127,7 +160,7 @@ local function resolveDev(devName)
         if monIdx then
             local targetIdx = tonumber(monIdx)
             local curr = 0
-            for _, name in ipairs(peripheral.getNames()) do
+            for _, name in ipairs(getSortedPeripheralNames()) do
                 local t = peripheral.getType(name)
                 if t == "monitor" or t == "ceemonitor" then
                     if curr == targetIdx then
@@ -137,7 +170,7 @@ local function resolveDev(devName)
                 end
             end
         end
-        for _, name in ipairs(peripheral.getNames()) do
+        for _, name in ipairs(getSortedPeripheralNames()) do
             if name == rawDev or name == devName then
                 return peripheral.wrap(name), name, true
             end
@@ -149,15 +182,13 @@ end
 local function findAllMonitors()
     local mons = {}
     local seen = {}
-    if peripheral and peripheral.getNames then
-        for _, name in ipairs(peripheral.getNames()) do
-            local pType = peripheral.getType(name)
-            if pType == "ceemonitor" or pType == "monitor" then
-                local obj = peripheral.wrap(name)
-                if obj and not seen[name] then
-                    seen[name] = true
-                    table.insert(mons, { obj = obj, name = name, type = pType })
-                end
+    for _, name in ipairs(getSortedPeripheralNames()) do
+        local pType = peripheral.getType(name)
+        if pType == "ceemonitor" or pType == "monitor" then
+            local obj = peripheral.wrap(name)
+            if obj and not seen[name] then
+                seen[name] = true
+                table.insert(mons, { obj = obj, name = name, type = pType })
             end
         end
     end
@@ -1112,11 +1143,10 @@ syscall_table[SYS.DEVLIST] = function(callerUser)
         methods = { "read", "write" }
     })
 
-    -- 2. Standard Peripherals
+    -- 2. Standard Peripherals (deterministic sorting across reboots)
     local SIDES = { top = true, bottom = true, left = true, right = true, front = true, back = true }
     local typeCounts = {}
-    if peripheral and peripheral.getNames then
-        for _, name in ipairs(peripheral.getNames()) do
+    for _, name in ipairs(getSortedPeripheralNames()) do
             local pType = peripheral.getType(name) or "device"
             typeCounts[pType] = (typeCounts[pType] or 0) + 1
             local idx = typeCounts[pType] - 1
@@ -1153,12 +1183,26 @@ syscall_table[SYS.DEVLIST] = function(callerUser)
                 methods = methods
             })
         end
-    end
 
     -- 3. CEE Signal Port (Pure descriptors on demand, ZERO tick pinging)
     if _G.cee then
         local maxPins = (_G.cee.getSignalCount and _G.cee.getSignalCount()) or 11
         for pin = 1, maxPins do
+            if _G.cee.getMonitors then
+                local ok, m = pcall(_G.cee.getMonitors, pin)
+                if ok and m and m.getSize then
+                    typeCounts["ceemonitor"] = (typeCounts["ceemonitor"] or 0) + 1
+                    local idx = typeCounts["ceemonitor"] - 1
+                    table.insert(devList, {
+                        dev = "/dev/mon" .. idx,
+                        bus = "cee",
+                        type = "ceemonitor",
+                        interface = "pin_" .. pin,
+                        status = "READY",
+                        methods = { "getSize", "write", "setCursorPos", "clear", "blit", "setTextScale" }
+                    })
+                end
+            end
             table.insert(devList, {
                 dev = "/dev/sig" .. pin,
                 bus = "cee",

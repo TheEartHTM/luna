@@ -2,6 +2,38 @@
 local M = {}
 
 local SIDES = { top = true, bottom = true, left = true, right = true, front = true, back = true }
+local SIDE_ORDER = {
+    bottom = 1,
+    top    = 2,
+    back   = 3,
+    front  = 4,
+    right  = 5,
+    left   = 6,
+}
+
+local function getSortedPeripheralNames()
+    if not peripheral or not peripheral.getNames then return {} end
+    local list = peripheral.getNames()
+    table.sort(list, function(a, b)
+        local oA = SIDE_ORDER[a]
+        local oB = SIDE_ORDER[b]
+        if oA and oB then
+            return oA < oB
+        elseif oA then
+            return true
+        elseif oB then
+            return false
+        end
+        local prefixA, numA = a:match("^(.-)_(%d+)$")
+        local prefixB, numB = b:match("^(.-)_(%d+)$")
+        if prefixA and prefixB and prefixA == prefixB then
+            local nA, nB = tonumber(numA), tonumber(numB)
+            if nA ~= nB then return nA < nB end
+        end
+        return a < b
+    end)
+    return list
+end
 
 -- Subsystem classifier
 local function classifySubsystem(pType, devName, methods)
@@ -124,9 +156,8 @@ function M.list()
         properties = { DEVNAME = "/dev/mouse0", SUBSYSTEM = "input", DRIVER = "native_mouse" }
     }))
 
-    -- 3. CC & Create Peripherals
-    if peripheral and peripheral.getNames then
-        for _, rawName in ipairs(peripheral.getNames()) do
+    -- 3. CC & Create Peripherals (deterministic sorting across reboots)
+    for _, rawName in ipairs(getSortedPeripheralNames()) do
             local pType = peripheral.getType(rawName) or "unknown"
             local methods = peripheral.getMethods(rawName) or {}
             local wrapped = peripheral.wrap(rawName)
@@ -169,12 +200,30 @@ function M.list()
             }
             table.insert(devices, wrapDeviceObject(devObj))
         end
-    end
 
-    -- 4. CEE Signal Port Pins
+    -- 4. CEE Signal Port Pins & CEE Monitors
     if _G.cee then
         local maxPins = (_G.cee.getSignalCount and _G.cee.getSignalCount()) or 11
         for pin = 1, maxPins do
+            if _G.cee.getMonitors then
+                local ok, m = pcall(_G.cee.getMonitors, pin)
+                if ok and m and m.getSize then
+                    local devPath = getNextDevName("mon")
+                    local monObj = {
+                        dev = devPath,
+                        name = "pin_" .. pin,
+                        type = "ceemonitor",
+                        subsystem = "display",
+                        bus = "cee",
+                        pin = pin,
+                        status = "READY",
+                        methods = { "getSize", "write", "setCursorPos", "clear", "blit", "setTextScale" },
+                        wrap = m,
+                        properties = { DEVNAME = devPath, PIN = pin, SUBSYSTEM = "display", BUS = "cee" }
+                    }
+                    table.insert(devices, wrapDeviceObject(monObj))
+                end
+            end
             local pinDev = "/dev/sig" .. pin
             local pinObj = {
                 dev = pinDev,

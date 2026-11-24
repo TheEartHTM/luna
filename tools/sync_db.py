@@ -293,28 +293,38 @@ def sync_repository(repo_root, check_only=False):
             if 'service' in info:
                 new_entry['service'] = info['service']
                 
-            # Compute file list if empty or scan package folder
-            if not new_entry.get('files'):
-                files_list = []
-                target_base = new_entry['path']
-                for root, _, files in os.walk(full_pkg_dir):
-                    for f in files:
-                        if f == '.PKGINFO':
-                            continue
-                        rel = os.path.relpath(os.path.join(root, f), full_pkg_dir)
-                        installed_path = os.path.normpath(os.path.join(target_base, rel))
-                        files_list.append(installed_path)
-                if new_entry.get('backup'):
-                    for b in new_entry['backup']:
-                        if b not in files_list:
-                            files_list.append(b)
-                new_entry['files'] = sorted(files_list)
+            # Recompute file list if empty or if directory files changed
+            dir_files = set()
+            for root, _, files in os.walk(full_pkg_dir):
+                for f in files:
+                    if f == '.PKGINFO' or f.startswith('.'):
+                        continue
+                    dir_files.add(os.path.relpath(os.path.join(root, f), full_pkg_dir))
+            
+            existing_map = {}
+            for f in entry.get('files', []):
+                existing_map[os.path.basename(f)] = f
+
+            files_list = []
+            for rel in sorted(dir_files):
+                if rel in existing_map:
+                    files_list.append(existing_map[rel])
+                else:
+                    installed_path = os.path.normpath(os.path.join(target_base, rel))
+                    files_list.append(installed_path)
+
+            sorted_files = sorted(files_list)
+
+            files_changed = False
+            if new_entry.get('files') != sorted_files:
+                files_changed = True
+                new_entry['files'] = sorted_files
             
             # Check for changes
             version_changed = (old_version != new_entry['version'])
             size_changed = (old_size != exact_size)
             
-            if version_changed or size_changed or (pkg_name not in existing_db):
+            if version_changed or size_changed or files_changed or (pkg_name not in existing_db):
                 section_changed = True
                 has_discrepancies = True
                 print(f"[{section.upper()}] Package '{pkg_name}':")
@@ -322,6 +332,8 @@ def sync_repository(repo_root, check_only=False):
                     print(f"    Version: '{old_version}' -> '{new_entry['version']}'")
                 if size_changed:
                     print(f"    Size:    {old_size} -> {exact_size} bytes")
+                if files_changed:
+                    print(f"    Files:   Updated file list ({len(new_entry['files'])} files)")
                 if pkg_name not in existing_db:
                     print(f"    New package discovered!")
                     

@@ -42,15 +42,47 @@ elseif _G.syscall then
     devices = _G.syscall("devlist")
 end
 
+local SIDES = { top = true, bottom = true, left = true, right = true, front = true, back = true }
+local SIDE_ORDER = {
+    bottom = 1,
+    top    = 2,
+    back   = 3,
+    front  = 4,
+    right  = 5,
+    left   = 6,
+}
+
+local function getSortedPeripheralNames()
+    if not peripheral or not peripheral.getNames then return {} end
+    local list = peripheral.getNames()
+    table.sort(list, function(a, b)
+        local oA = SIDE_ORDER[a]
+        local oB = SIDE_ORDER[b]
+        if oA and oB then
+            return oA < oB
+        elseif oA then
+            return true
+        elseif oB then
+            return false
+        end
+        local prefixA, numA = a:match("^(.-)_(%d+)$")
+        local prefixB, numB = b:match("^(.-)_(%d+)$")
+        if prefixA and prefixB and prefixA == prefixB then
+            local nA, nB = tonumber(numA), tonumber(numB)
+            if nA ~= nB then return nA < nB end
+        end
+        return a < b
+    end)
+    return list
+end
+
 -- Fallback to direct detection if kernel syscall unavailable
 if not devices then
     devices = {}
     table.insert(devices, { dev = "/dev/raid0", bus = "mem", type = "storage", interface = "RAID-0 Block", status = "ONLINE" })
     table.insert(devices, { dev = "/dev/boot", bus = "mem", type = "storage", interface = "/mem/boot", status = "ONLINE" })
-    local SIDES = { top = true, bottom = true, left = true, right = true, front = true, back = true }
     local typeCounts = {}
-    if peripheral and peripheral.getNames then
-        for _, name in ipairs(peripheral.getNames()) do
+    for _, name in ipairs(getSortedPeripheralNames()) do
             local pType = peripheral.getType(name) or "device"
             typeCounts[pType] = (typeCounts[pType] or 0) + 1
             local idx = typeCounts[pType] - 1
@@ -73,10 +105,24 @@ if not devices then
                 methods = peripheral.getMethods(name) or {}
             })
         end
-    end
     if _G.cee then
         local maxPins = (_G.cee.getSignalCount and _G.cee.getSignalCount()) or 11
         for pin = 1, maxPins do
+            if _G.cee.getMonitors then
+                local ok, m = pcall(_G.cee.getMonitors, pin)
+                if ok and m and m.getSize then
+                    typeCounts["ceemonitor"] = (typeCounts["ceemonitor"] or 0) + 1
+                    local idx = typeCounts["ceemonitor"] - 1
+                    table.insert(devices, {
+                        dev = "/dev/mon" .. idx,
+                        bus = "cee",
+                        type = "ceemonitor",
+                        interface = "pin_" .. pin,
+                        status = "READY",
+                        methods = { "getSize", "write", "setCursorPos", "clear", "blit", "setTextScale" }
+                    })
+                end
+            end
             table.insert(devices, {
                 dev = "/dev/sig" .. pin,
                 bus = "cee",

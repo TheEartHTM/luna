@@ -1,4 +1,4 @@
--- play - Luna OS Audio Player for CEE Electric Speaker and CC Speakers
+-- audio - Luna OS Audio Player for CEE Electric Speaker and CC Speakers
 local term = term
 local colors = colors
 local isColor = term.isColor and term.isColor()
@@ -15,15 +15,15 @@ if not sound then
 end
 
 if not sound then
-    printError("play: sound library (/usr/lib/sound.lua) not found")
+    printError("audio: sound library (/usr/lib/sound.lua) not found")
     return
 end
 
 local args = { ... }
 if #args == 0 or args[1] == "-h" or args[1] == "--help" then
-    print("usage: play <file | sound> [volume]")
-    print("       play stop")
-    print("       play status")
+    print("usage: audio <file | sound> [volume]")
+    print("       audio stop")
+    print("       audio status")
     print("options:")
     print("  -v, --volume <0.0-1.0>   playback volume (default 1.0)")
     print("  -s, --sound <mc_sound>   play Minecraft sound event")
@@ -33,7 +33,7 @@ if #args == 0 or args[1] == "-h" or args[1] == "--help" then
     return
 end
 
--- Command: play stop
+-- Command: audio stop
 if args[1] == "stop" then
     sound.stop()
     if isColor then term.setTextColor(colors.green or colors.lime) end
@@ -42,7 +42,7 @@ if args[1] == "stop" then
     return
 end
 
--- Command: play status
+-- Command: audio status
 if args[1] == "status" then
     local speakers = sound.getSpeakers()
     if #speakers == 0 then
@@ -112,14 +112,14 @@ while idx <= #args do
 end
 
 if not targetFile then
-    printError("play: no audio file or sound specified")
+    printError("audio: no audio file or sound specified")
     return
 end
 
 -- Resolve speaker
 local spk, err = sound.getSpeaker(targetDev)
 if not spk then
-    printError("play: " .. tostring(err))
+    printError("audio: " .. tostring(err))
     return
 end
 
@@ -165,7 +165,7 @@ else
 end
 
 if not ok then
-    printError("play: playback failed: " .. tostring(playErr))
+    printError("audio: playback failed: " .. tostring(playErr))
     return
 end
 

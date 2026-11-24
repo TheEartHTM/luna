@@ -1,6 +1,9 @@
 -- Luna OS Stage-1 Bootstrap Installer (install.lua)
 -- Lightweight loader: initializes VFS storage pool, then pulls and launches setup.lua
 
+if not fs.exists("mem") then fs.makeDir("mem") end
+if not fs.exists("mem2") then fs.makeDir("mem2") end
+
 -- 1. Display Setup: Stays strictly on primary native screen
 local nativeTerm = term.native and term.native() or term.current()
 term.redirect(nativeTerm)

@@ -1,0 +1,111 @@
+name: Convert Video for Luna OS
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Media Source (Direct URL, YouTube URL, or repo file path)'
+        required: true
+        type: string
+      name:
+        description: 'Output base filename (without extension)'
+        required: false
+        default: 'video'
+        type: string
+      fps:
+        description: 'Target playback frame rate (FPS)'
+        required: false
+        default: '10'
+        type: string
+      width:
+        description: 'Target pixel width (must be even, e.g. 328)'
+        required: false
+        default: '328'
+        type: string
+      height:
+        description: 'Target pixel height (must be divisible by 3, e.g. 243)'
+        required: false
+        default: '243'
+        type: string
+      keyframe_interval:
+        description: 'Keyframe interval in frames'
+        required: false
+        default: '30'
+        type: string
+      dither:
+        description: 'Enable Floyd-Steinberg dithering'
+        required: false
+        default: true
+        type: boolean
+      extract_audio:
+        description: 'Extract companion OGG Vorbis audio'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  convert-video:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install System Dependencies
+        run: |
+          echo ":: Installing FFmpeg and FFprobe..."
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Dependencies
+        run: |
+          echo ":: Installing Pillow and yt-dlp..."
+          pip install Pillow yt-dlp
+
+      - name: Run Video Converter
+        id: convert
+        env:
+          INPUT_SOURCE: ${{ inputs.source }}
+          INPUT_NAME: ${{ inputs.name }}
+          INPUT_FPS: ${{ inputs.fps }}
+          INPUT_WIDTH: ${{ inputs.width }}
+          INPUT_HEIGHT: ${{ inputs.height }}
+          INPUT_KEYFRAME_INTERVAL: ${{ inputs.keyframe_interval }}
+          INPUT_DITHER: ${{ inputs.dither }}
+          INPUT_EXTRACT_AUDIO: ${{ inputs.extract_audio }}
+        run: |
+          mkdir -p output/
+          ARGS=(
+            "$INPUT_SOURCE"
+            "-o" "output/"
+            "--name" "$INPUT_NAME"
+            "--fps" "$INPUT_FPS"
+            "--width" "$INPUT_WIDTH"
+            "--height" "$INPUT_HEIGHT"
+            "--keyframe-interval" "$INPUT_KEYFRAME_INTERVAL"
+          )
+          if [ "$INPUT_DITHER" = "false" ]; then
+            ARGS+=("--no-dither")
+          fi
+          if [ "$INPUT_EXTRACT_AUDIO" = "false" ]; then
+            ARGS+=("--no-audio")
+          fi
+
+          echo ":: Executing: python3 scripts/video_converter.py ${ARGS[*]}"
+          python3 scripts/video_converter.py "${ARGS[@]}"
+
+      - name: Upload Converted Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: luna-media-${{ inputs.name }}
+          path: |
+            output/*.lvd
+            output/*.ogg
+          if-no-files-found: error
